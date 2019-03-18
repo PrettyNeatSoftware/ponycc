@@ -201,7 +201,7 @@ class _Parser
     state.add_deferrable_ast((Tk[Module], _current_pos()))
     
     
-    state.default_tk = Tk[EOF]
+    state.default_tk = Tk[None]
     found = false
     while _current_tk() is Tk[NewLine] do _consume_token() end
     res =
@@ -322,6 +322,41 @@ class _Parser
         break _handle_not_found(state, "package or ffi declaration", false)
       end
     if res isnt None then return (res, _BuildDefault) end
+    
+    
+    state.default_tk = Tk[None]
+    found = false
+    while _current_tk() is Tk[NewLine] do _consume_token() end
+    res =
+      match _current_tk() | Tk[If] =>
+        found = true
+        last_matched = Tk[If].desc()
+        _handle_found(state, (_consume_token(); None), _BuildDefault)
+      else
+        found = false
+        _handle_not_found(state, Tk[If].desc(), false)
+      end
+    if res isnt None then return (res, _BuildDefault) end
+    if found then
+      
+      
+      state.default_tk = None
+      found = false
+      res =
+        while true do
+          match _parse_infix("use condition")
+          | (_RuleParseError, _) => break _handle_error(state)
+          | (let tree: (TkTree | None), let build: _Build) =>
+            found = true
+            last_matched = "use condition"
+            break _handle_found(state, tree, build)
+          end
+          
+          found = false
+          break _handle_not_found(state, "use condition", false)
+        end
+      if res isnt None then return (res, _BuildDefault) end
+    end
     
     (_complete(state), _BuildDefault)
   
@@ -489,41 +524,6 @@ class _Parser
         _handle_not_found(state, Tk[Question].desc(), false)
       end
     if res isnt None then return (res, _BuildDefault) end
-    
-    
-    state.default_tk = Tk[None]
-    found = false
-    while _current_tk() is Tk[NewLine] do _consume_token() end
-    res =
-      match _current_tk() | Tk[If] =>
-        found = true
-        last_matched = Tk[If].desc()
-        _handle_found(state, (_consume_token(); None), _BuildDefault)
-      else
-        found = false
-        _handle_not_found(state, Tk[If].desc(), false)
-      end
-    if res isnt None then return (res, _BuildDefault) end
-    if found then
-      
-      
-      state.default_tk = None
-      found = false
-      res =
-        while true do
-          match _parse_ifdefinfix("use condition")
-          | (_RuleParseError, _) => break _handle_error(state)
-          | (let tree: (TkTree | None), let build: _Build) =>
-            found = true
-            last_matched = "use condition"
-            break _handle_found(state, tree, build)
-          end
-          
-          found = false
-          break _handle_not_found(state, "use condition", false)
-        end
-      if res isnt None then return (res, _BuildDefault) end
-    end
     
     (_complete(state), _BuildDefault)
   
@@ -858,6 +858,21 @@ class _Parser
         end
       if res isnt None then return (res, _BuildDefault) end
     end
+    
+    
+    state.default_tk = Tk[None]
+    found = false
+    while _current_tk() is Tk[NewLine] do _consume_token() end
+    res =
+      match _current_tk() | Tk[LitString] =>
+        found = true
+        last_matched = "docstring"
+        _handle_found(state, TkTree(_consume_token()), _BuildDefault)
+      else
+        found = false
+        _handle_not_found(state, "docstring", false)
+      end
+    if res isnt None then return (res, _BuildDefault) end
     
     (_complete(state), _BuildDefault)
   
@@ -1540,6 +1555,14 @@ class _Parser
           break _handle_found(state, tree, build)
         end
         
+        match _parse_dontcare("parameter")
+        | (_RuleParseError, _) => break _handle_error(state)
+        | (let tree: (TkTree | None), let build: _Build) =>
+          found = true
+          last_matched = "parameter"
+          break _handle_found(state, tree, build)
+        end
+        
         found = false
         break _handle_not_found(state, "parameter", false)
       end
@@ -1576,6 +1599,14 @@ class _Parser
           end
           
           match _parse_ellipsis("parameter")
+          | (_RuleParseError, _) => break _handle_error(state)
+          | (let tree: (TkTree | None), let build: _Build) =>
+            found = true
+            last_matched = "parameter"
+            break _handle_found(state, tree, build)
+          end
+          
+          match _parse_dontcare("parameter")
           | (_RuleParseError, _) => break _handle_error(state)
           | (let tree: (TkTree | None), let build: _Build) =>
             found = true
@@ -2506,7 +2537,7 @@ class _Parser
     found = false
     res =
       while true do
-        match _parse_ifdefterm("ifdef condition")
+        match _parse_infix("ifdef condition")
         | (_RuleParseError, _) => break _handle_error(state)
         | (let tree: (TkTree | None), let build: _Build) =>
           found = true
@@ -2552,15 +2583,7 @@ class _Parser
     found = false
     res =
       while true do
-        match _parse_ifdefflag("ifdef condition")
-        | (_RuleParseError, _) => break _handle_error(state)
-        | (let tree: (TkTree | None), let build: _Build) =>
-          found = true
-          last_matched = "ifdef condition"
-          break _handle_found(state, tree, build)
-        end
-        
-        match _parse_ifdefnot("ifdef condition")
+        match _parse_infix("ifdef condition")
         | (_RuleParseError, _) => break _handle_error(state)
         | (let tree: (TkTree | None), let build: _Build) =>
           found = true
@@ -2624,7 +2647,7 @@ class _Parser
     found = false
     res =
       while true do
-        match _parse_ifdefterm("ifdef condition")
+        match _parse_infix("ifdef condition")
         | (_RuleParseError, _) => break _handle_error(state)
         | (let tree: (TkTree | None), let build: _Build) =>
           found = true
@@ -2670,7 +2693,7 @@ class _Parser
     found = false
     res =
       while true do
-        match _parse_ifdefterm("ifdef condition")
+        match _parse_infix("ifdef condition")
         | (_RuleParseError, _) => break _handle_error(state)
         | (let tree: (TkTree | None), let build: _Build) =>
           found = true
@@ -2710,7 +2733,7 @@ class _Parser
     found = false
     res =
       while true do
-        match _parse_ifdefinfix("condition expression")
+        match _parse_infix("condition expression")
         | (_RuleParseError, _) => break _handle_error(state)
         | (let tree: (TkTree | None), let build: _Build) =>
           found = true
@@ -2825,7 +2848,7 @@ class _Parser
     found = false
     res =
       while true do
-        match _parse_ifdefinfix("condition expression")
+        match _parse_infix("condition expression")
         | (_RuleParseError, _) => break _handle_error(state)
         | (let tree: (TkTree | None), let build: _Build) =>
           found = true
@@ -4001,7 +4024,7 @@ class _Parser
     found = false
     while _current_tk() is Tk[NewLine] do _consume_token() end
     res =
-      match _current_tk() | Tk[Id] =>
+      match _current_tk() | Tk[Id] | Tk[DontCare] =>
         found = true
         last_matched = "variable name"
         _handle_found(state, TkTree(_consume_token()), _BuildDefault)
@@ -5141,7 +5164,7 @@ class _Parser
     found = false
     while _current_tk() is Tk[NewLine] do _consume_token() end
     res =
-      match _current_tk() | Tk[Id] =>
+      match _current_tk() | Tk[Id] | Tk[DontCare] =>
         found = true
         last_matched = "variable name"
         _handle_found(state, TkTree(_consume_token()), _BuildDefault)
@@ -7640,6 +7663,14 @@ class _Parser
           break _handle_found(state, tree, build)
         end
         
+        match _parse_dontcare("type")
+        | (_RuleParseError, _) => break _handle_error(state)
+        | (let tree: (TkTree | None), let build: _Build) =>
+          found = true
+          last_matched = "type"
+          break _handle_found(state, tree, build)
+        end
+        
         found = false
         break _handle_not_found(state, "type", false)
       end
@@ -7668,6 +7699,14 @@ class _Parser
       res =
         while true do
           match _parse_type("type")
+          | (_RuleParseError, _) => break _handle_error(state)
+          | (let tree: (TkTree | None), let build: _Build) =>
+            found = true
+            last_matched = "type"
+            break _handle_found(state, tree, build)
+          end
+          
+          match _parse_dontcare("type")
           | (_RuleParseError, _) => break _handle_error(state)
           | (let tree: (TkTree | None), let build: _Build) =>
             found = true

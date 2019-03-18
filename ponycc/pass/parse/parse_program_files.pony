@@ -2,24 +2,44 @@
 use ".."
 use "../../ast"
 use "collections"
+use "files"
 
 class val ParseProgramFiles is Pass[Sources, Program]
   """
   TODO: Docs for this agreggated pass
   """
   let _resolve_sources: {(String, String): (String, Sources)?} val
+  let _load_builtin: Bool val
 
   fun name(): String => "parse-program-files"
 
-  new val create(resolve_sources': {(String, String): (String, Sources)?} val) =>
+  new val create(resolve_sources': {(String, String): (String, Sources)?} val, load_builtin: Bool = true) =>
     _resolve_sources = resolve_sources'
+    _load_builtin = load_builtin
 
   fun apply(sources: Sources, fn: {(Program, Array[PassError] val)} val) =>
-    _ParseProgramFilesEngine(_resolve_sources, fn).start(sources)
+    let engine = _ParseProgramFilesEngine(_resolve_sources, fn)
+    if _load_builtin then
+      try
+        (let builtin_dir, let builtin_sources) = _resolve_sources(".", "builtin")?
+        engine.start(builtin_sources)
+      end
+    end
+    engine.start(sources)
+
+class val AbsPath is (Hashable & Equatable[AbsPath])
+  let path: String val
+  new val create(str: String) =>
+    path = Path.abs(Path.clean(str))
+  
+  fun eq(that: AbsPath): Bool => path == that.path
+
+  fun hash(): USize => path.hash()
 
 actor _ParseProgramFilesEngine
   let _pending: SetIs[Source]     = _pending.create()
-  let _packages: Array[Package]   = []
+  var _completed: Bool = false
+  let _packages: Map[AbsPath, Package] = _packages.create()
   var _errs: Array[PassError] trn = []
   let _complete_fn: {(Program, Array[PassError] val)} val
   let _resolve_sources: {(String, String): (String, Sources)?} val
@@ -31,10 +51,20 @@ actor _ParseProgramFilesEngine
     (_resolve_sources, _complete_fn) = (resolve_sources', complete_fn')
 
   be start(sources: Sources, package: Package = Package) =>
-    for source in sources.values() do
-      _pending.set(source)
-      let this_tag: _ParseProgramFilesEngine = this
-      Parse(source, this_tag~after_parse(source, package)) // TODO: fix ponyc to let plain `this` work here
+    _start(sources, package)
+  
+  fun ref _start(sources: Sources, package: Package) =>
+    try
+      let package_path = AbsPath(Path.dir(sources(0)?.path()))
+      if _packages.contains(package_path) then return end
+
+      _packages(package_path) = package
+
+      for source in sources.values() do
+        _pending.set(source)
+        let this_tag: _ParseProgramFilesEngine = this
+        Parse(source, this_tag~after_parse(source, package)) // TODO: fix ponyc to let plain `this` work here
+      end
     end
 
   be after_parse(
@@ -57,13 +87,38 @@ actor _ParseProgramFilesEngine
       | let u: UseFFIDecl => package.add_ffi_decl(u)
       | let u: UsePackage =>
         try
-          (let package_path, let sources) =
-            _resolve_sources(u.pos().source().path(), u.package().value())?
+          (let scheme, let locator) =
+            try
+              let specifier = u.package().value()
+              (let scheme, let locator) = specifier.clone().chop(specifier.find(":")?.usize())
+              locator.trim_in_place(1)
+              (scheme, locator)
+            else ("package", u.package().value())
+            end
 
-          // TODO: assign same Package to packages with the same absolute path.
-          let new_package = Package
-          use_packages.push(u.attach_tag[Package](new_package))
-          start(sources, new_package)
+          match scheme
+          | "package" =>
+            (let package_path, let sources) =
+              _resolve_sources(u.pos().source().path(), u.package().value())?
+            
+
+            // TODO: assign same Package to packages with the same absolute path.
+            try
+              let used_package = _packages(AbsPath(package_path))?
+              use_packages.push(u.attach_tag[Package](used_package))
+            else
+              let new_package = Package
+              use_packages.push(u.attach_tag[Package](new_package))
+              @printf[I32]("Use Package %s\n".cstring(), u.package().value().cstring())
+              _start(sources, new_package)
+            end
+          
+          | "lib" => None // used for including libraries
+          | "path" => None // setting library search paths
+          | "test" => None
+          else None // TODO: how do we handle lib schemes?
+          end
+
         else
           _errs.push(PassError(u.package().pos(),
             "Couldn't resolve this package directory."))
@@ -79,7 +134,7 @@ actor _ParseProgramFilesEngine
 
     try package.add_doc(module.docs() as LitString) end
 
-    _packages.push(package)
+    // _packages.push(package)
 
     _maybe_complete()
 
@@ -89,9 +144,10 @@ actor _ParseProgramFilesEngine
     This is in a separate behaviour so that causal message order ensures that
     this happens after any start calls in the same after_parse execution.
     """
-    if _pending.size() == 0 then _complete() end
+    if (_pending.size() == 0) and (not _completed) then _complete() end
 
   fun ref _complete() =>
+    _completed = true
     let program = Program
 
     // Collect the modules into packages.

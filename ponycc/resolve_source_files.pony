@@ -1,6 +1,5 @@
 
 use "files"
-use "glob"
 use "ast"
 
 class val ResolveSourceFiles
@@ -30,12 +29,16 @@ class val ResolveSourceFiles
     will be used as the actual starting path for the search.
     """
     let dir_path = _find_dir(start_path, path)?
+    let dir = Directory(dir_path)?
     let sources: Array[Source] trn = []
-    for file_path in Glob.glob(dir_path, "*.pony").values() do
-      let file = File.open(file_path)
+    for file_name in dir.entries()?.values() do
+      if Path.ext(file_name) != "pony" then continue end
+
+      let file = dir.open_file(file_name)?
+
       if (file.errno() is FileOK) and (file.size() != -1) then
         let content = String.from_array(file.read(file.size()))
-        sources.push(Source(content, file_path.path))
+        sources.push(Source(content, file.path.path))
       end
     end
     (dir_path.path, consume sources)

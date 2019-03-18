@@ -252,9 +252,11 @@ trait val Type is AST
 trait val Field is AST
   fun val field_type(): Type
   fun val default(): (Expr | None)
+  fun val docstring(): (LitString | None)
   fun val name(): Id
   fun val with_field_type(field_type': Type): Field
   fun val with_default(default': (Expr | None)): Field
+  fun val with_docstring(docstring': (LitString | None)): Field
   fun val with_name(name': Id): Field
 
 trait val IfDefBinaryOp is AST
@@ -267,11 +269,13 @@ trait val GenCap is AST
 
 trait val Local is AST
   fun val local_type(): (Type | None)
-  fun val name(): Id
+  fun val name(): (Id | DontCare)
   fun val with_local_type(local_type': (Type | None)): Local
-  fun val with_name(name': Id): Local
+  fun val with_name(name': (Id | DontCare)): Local
 
 trait val UseDecl is AST
+  fun val guard(): (Expr | None)
+  fun val with_guard(guard': (Expr | None)): UseDecl
 
 trait val Jump is AST
   fun val value(): (Expr | None)
@@ -510,14 +514,17 @@ class val UsePackage is (AST & UseDecl)
   
   let _prefix: (Id | None)
   let _package: LitString
+  let _guard: (Expr | None)
   
   new val create(
     prefix': (Id | None) = None,
     package': LitString,
+    guard': (Expr | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _prefix = prefix'
     _package = package'
+    _guard = guard'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -530,6 +537,7 @@ class val UsePackage is (AST & UseDecl)
       try iter.next()?
       else errs.push(("UsePackage missing required field: package", pos')); error
       end
+    let guard': (AST | None) = try iter.next()? else None end
     if
       try
         let extra' = iter.next()?
@@ -546,33 +554,41 @@ class val UsePackage is (AST & UseDecl)
       try package' as LitString
       else errs.push(("UsePackage got incompatible field: package", try (package' as AST).pos() else SourcePosNone end)); error
       end
+    _guard =
+      try guard' as (Expr | None)
+      else errs.push(("UsePackage got incompatible field: guard", try (guard' as AST).pos() else SourcePosNone end)); error
+      end
   
   fun val apply_specialised[C](c: C, fn: {[A: AST val](C, A)} val) => fn[UsePackage](consume c, this)
   fun val pos(): SourcePosAny => try find_attached_val[SourcePosAny]()? else SourcePosNone end
   fun val with_pos(pos': SourcePosAny): UsePackage => attach_val[SourcePosAny](pos')
   
-  fun val size(): USize => 1 + 1
+  fun val size(): USize => 1 + 1 + 1
   fun val apply(idx: USize): (AST | None)? =>
     var offset: USize = 0
     if idx == (0 + offset) then return _prefix end
     if idx == (1 + offset) then return _package end
+    if idx == (2 + offset) then return _guard end
     error
-  fun val attach_val[A: Any val](a: A): UsePackage => create(_prefix, _package, (try _attachments as Attachments else Attachments end).attach_val[A](a))
+  fun val attach_val[A: Any val](a: A): UsePackage => create(_prefix, _package, _guard, (try _attachments as Attachments else Attachments end).attach_val[A](a))
   
-  fun val attach_tag[A: Any tag](a: A): UsePackage => create(_prefix, _package, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
+  fun val attach_tag[A: Any tag](a: A): UsePackage => create(_prefix, _package, _guard, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
   fun val prefix(): (Id | None) => _prefix
   fun val package(): LitString => _package
+  fun val guard(): (Expr | None) => _guard
   
-  fun val with_prefix(prefix': (Id | None)): UsePackage => create(prefix', _package, _attachments)
-  fun val with_package(package': LitString): UsePackage => create(_prefix, package', _attachments)
+  fun val with_prefix(prefix': (Id | None)): UsePackage => create(prefix', _package, _guard, _attachments)
+  fun val with_package(package': LitString): UsePackage => create(_prefix, package', _guard, _attachments)
+  fun val with_guard(guard': (Expr | None)): UsePackage => create(_prefix, _package, guard', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
     | "prefix" => _prefix
     | "package" => _package
+    | "guard" => _guard
     else error
     end
   
@@ -580,10 +596,13 @@ class val UsePackage is (AST & UseDecl)
     if child' is replace' then return this end
     try
       if child' is _prefix then
-        return create(replace' as (Id | None), _package, _attachments)
+        return create(replace' as (Id | None), _package, _guard, _attachments)
       end
       if child' is _package then
-        return create(_prefix, replace' as LitString, _attachments)
+        return create(_prefix, replace' as LitString, _guard, _attachments)
+      end
+      if child' is _guard then
+        return create(_prefix, _package, replace' as (Expr | None), _attachments)
       end
       error
     else this
@@ -594,7 +613,8 @@ class val UsePackage is (AST & UseDecl)
     s.append("UsePackage")
     s.push('(')
     s.>append(_prefix.string()).>push(',').push(' ')
-    s.>append(_package.string())
+    s.>append(_package.string()).>push(',').push(' ')
+    s.>append(_guard.string())
     s.push(')')
     consume s
 
@@ -605,14 +625,14 @@ class val UseFFIDecl is (AST & UseDecl)
   let _return_type: TypeArgs
   let _params: Params
   let _partial: (Question | None)
-  let _guard: (IfDefCond | None)
+  let _guard: (Expr | None)
   
   new val create(
     name': (Id | LitString),
     return_type': TypeArgs,
     params': Params,
     partial': (Question | None),
-    guard': (IfDefCond | None) = None,
+    guard': (Expr | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _name = name'
@@ -669,7 +689,7 @@ class val UseFFIDecl is (AST & UseDecl)
       else errs.push(("UseFFIDecl got incompatible field: partial", try (partial' as AST).pos() else SourcePosNone end)); error
       end
     _guard =
-      try guard' as (IfDefCond | None)
+      try guard' as (Expr | None)
       else errs.push(("UseFFIDecl got incompatible field: guard", try (guard' as AST).pos() else SourcePosNone end)); error
       end
   
@@ -696,13 +716,13 @@ class val UseFFIDecl is (AST & UseDecl)
   fun val return_type(): TypeArgs => _return_type
   fun val params(): Params => _params
   fun val partial(): (Question | None) => _partial
-  fun val guard(): (IfDefCond | None) => _guard
+  fun val guard(): (Expr | None) => _guard
   
   fun val with_name(name': (Id | LitString)): UseFFIDecl => create(name', _return_type, _params, _partial, _guard, _attachments)
   fun val with_return_type(return_type': TypeArgs): UseFFIDecl => create(_name, return_type', _params, _partial, _guard, _attachments)
   fun val with_params(params': Params): UseFFIDecl => create(_name, _return_type, params', _partial, _guard, _attachments)
   fun val with_partial(partial': (Question | None)): UseFFIDecl => create(_name, _return_type, _params, partial', _guard, _attachments)
-  fun val with_guard(guard': (IfDefCond | None)): UseFFIDecl => create(_name, _return_type, _params, _partial, guard', _attachments)
+  fun val with_guard(guard': (Expr | None)): UseFFIDecl => create(_name, _return_type, _params, _partial, guard', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
@@ -730,7 +750,7 @@ class val UseFFIDecl is (AST & UseDecl)
         return create(_name, _return_type, _params, replace' as (Question | None), _guard, _attachments)
       end
       if child' is _guard then
-        return create(_name, _return_type, _params, _partial, replace' as (IfDefCond | None), _attachments)
+        return create(_name, _return_type, _params, _partial, replace' as (Expr | None), _attachments)
       end
       error
     else this
@@ -2083,16 +2103,19 @@ class val FieldLet is (AST & Field)
   let _name: Id
   let _field_type: Type
   let _default: (Expr | None)
+  let _docstring: (LitString | None)
   
   new val create(
     name': Id,
     field_type': Type,
     default': (Expr | None) = None,
+    docstring': (LitString | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _name = name'
     _field_type = field_type'
     _default = default'
+    _docstring = docstring'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -2109,6 +2132,7 @@ class val FieldLet is (AST & Field)
       else errs.push(("FieldLet missing required field: field_type", pos')); error
       end
     let default': (AST | None) = try iter.next()? else None end
+    let docstring': (AST | None) = try iter.next()? else None end
     if
       try
         let extra' = iter.next()?
@@ -2129,37 +2153,45 @@ class val FieldLet is (AST & Field)
       try default' as (Expr | None)
       else errs.push(("FieldLet got incompatible field: default", try (default' as AST).pos() else SourcePosNone end)); error
       end
+    _docstring =
+      try docstring' as (LitString | None)
+      else errs.push(("FieldLet got incompatible field: docstring", try (docstring' as AST).pos() else SourcePosNone end)); error
+      end
   
   fun val apply_specialised[C](c: C, fn: {[A: AST val](C, A)} val) => fn[FieldLet](consume c, this)
   fun val pos(): SourcePosAny => try find_attached_val[SourcePosAny]()? else SourcePosNone end
   fun val with_pos(pos': SourcePosAny): FieldLet => attach_val[SourcePosAny](pos')
   
-  fun val size(): USize => 1 + 1 + 1
+  fun val size(): USize => 1 + 1 + 1 + 1
   fun val apply(idx: USize): (AST | None)? =>
     var offset: USize = 0
     if idx == (0 + offset) then return _name end
     if idx == (1 + offset) then return _field_type end
     if idx == (2 + offset) then return _default end
+    if idx == (3 + offset) then return _docstring end
     error
-  fun val attach_val[A: Any val](a: A): FieldLet => create(_name, _field_type, _default, (try _attachments as Attachments else Attachments end).attach_val[A](a))
+  fun val attach_val[A: Any val](a: A): FieldLet => create(_name, _field_type, _default, _docstring, (try _attachments as Attachments else Attachments end).attach_val[A](a))
   
-  fun val attach_tag[A: Any tag](a: A): FieldLet => create(_name, _field_type, _default, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
+  fun val attach_tag[A: Any tag](a: A): FieldLet => create(_name, _field_type, _default, _docstring, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
   fun val name(): Id => _name
   fun val field_type(): Type => _field_type
   fun val default(): (Expr | None) => _default
+  fun val docstring(): (LitString | None) => _docstring
   
-  fun val with_name(name': Id): FieldLet => create(name', _field_type, _default, _attachments)
-  fun val with_field_type(field_type': Type): FieldLet => create(_name, field_type', _default, _attachments)
-  fun val with_default(default': (Expr | None)): FieldLet => create(_name, _field_type, default', _attachments)
+  fun val with_name(name': Id): FieldLet => create(name', _field_type, _default, _docstring, _attachments)
+  fun val with_field_type(field_type': Type): FieldLet => create(_name, field_type', _default, _docstring, _attachments)
+  fun val with_default(default': (Expr | None)): FieldLet => create(_name, _field_type, default', _docstring, _attachments)
+  fun val with_docstring(docstring': (LitString | None)): FieldLet => create(_name, _field_type, _default, docstring', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
     | "name" => _name
     | "field_type" => _field_type
     | "default" => _default
+    | "docstring" => _docstring
     else error
     end
   
@@ -2167,13 +2199,16 @@ class val FieldLet is (AST & Field)
     if child' is replace' then return this end
     try
       if child' is _name then
-        return create(replace' as Id, _field_type, _default, _attachments)
+        return create(replace' as Id, _field_type, _default, _docstring, _attachments)
       end
       if child' is _field_type then
-        return create(_name, replace' as Type, _default, _attachments)
+        return create(_name, replace' as Type, _default, _docstring, _attachments)
       end
       if child' is _default then
-        return create(_name, _field_type, replace' as (Expr | None), _attachments)
+        return create(_name, _field_type, replace' as (Expr | None), _docstring, _attachments)
+      end
+      if child' is _docstring then
+        return create(_name, _field_type, _default, replace' as (LitString | None), _attachments)
       end
       error
     else this
@@ -2185,7 +2220,8 @@ class val FieldLet is (AST & Field)
     s.push('(')
     s.>append(_name.string()).>push(',').push(' ')
     s.>append(_field_type.string()).>push(',').push(' ')
-    s.>append(_default.string())
+    s.>append(_default.string()).>push(',').push(' ')
+    s.>append(_docstring.string())
     s.push(')')
     consume s
 
@@ -2195,16 +2231,19 @@ class val FieldVar is (AST & Field)
   let _name: Id
   let _field_type: Type
   let _default: (Expr | None)
+  let _docstring: (LitString | None)
   
   new val create(
     name': Id,
     field_type': Type,
     default': (Expr | None) = None,
+    docstring': (LitString | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _name = name'
     _field_type = field_type'
     _default = default'
+    _docstring = docstring'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -2221,6 +2260,7 @@ class val FieldVar is (AST & Field)
       else errs.push(("FieldVar missing required field: field_type", pos')); error
       end
     let default': (AST | None) = try iter.next()? else None end
+    let docstring': (AST | None) = try iter.next()? else None end
     if
       try
         let extra' = iter.next()?
@@ -2241,37 +2281,45 @@ class val FieldVar is (AST & Field)
       try default' as (Expr | None)
       else errs.push(("FieldVar got incompatible field: default", try (default' as AST).pos() else SourcePosNone end)); error
       end
+    _docstring =
+      try docstring' as (LitString | None)
+      else errs.push(("FieldVar got incompatible field: docstring", try (docstring' as AST).pos() else SourcePosNone end)); error
+      end
   
   fun val apply_specialised[C](c: C, fn: {[A: AST val](C, A)} val) => fn[FieldVar](consume c, this)
   fun val pos(): SourcePosAny => try find_attached_val[SourcePosAny]()? else SourcePosNone end
   fun val with_pos(pos': SourcePosAny): FieldVar => attach_val[SourcePosAny](pos')
   
-  fun val size(): USize => 1 + 1 + 1
+  fun val size(): USize => 1 + 1 + 1 + 1
   fun val apply(idx: USize): (AST | None)? =>
     var offset: USize = 0
     if idx == (0 + offset) then return _name end
     if idx == (1 + offset) then return _field_type end
     if idx == (2 + offset) then return _default end
+    if idx == (3 + offset) then return _docstring end
     error
-  fun val attach_val[A: Any val](a: A): FieldVar => create(_name, _field_type, _default, (try _attachments as Attachments else Attachments end).attach_val[A](a))
+  fun val attach_val[A: Any val](a: A): FieldVar => create(_name, _field_type, _default, _docstring, (try _attachments as Attachments else Attachments end).attach_val[A](a))
   
-  fun val attach_tag[A: Any tag](a: A): FieldVar => create(_name, _field_type, _default, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
+  fun val attach_tag[A: Any tag](a: A): FieldVar => create(_name, _field_type, _default, _docstring, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
   fun val name(): Id => _name
   fun val field_type(): Type => _field_type
   fun val default(): (Expr | None) => _default
+  fun val docstring(): (LitString | None) => _docstring
   
-  fun val with_name(name': Id): FieldVar => create(name', _field_type, _default, _attachments)
-  fun val with_field_type(field_type': Type): FieldVar => create(_name, field_type', _default, _attachments)
-  fun val with_default(default': (Expr | None)): FieldVar => create(_name, _field_type, default', _attachments)
+  fun val with_name(name': Id): FieldVar => create(name', _field_type, _default, _docstring, _attachments)
+  fun val with_field_type(field_type': Type): FieldVar => create(_name, field_type', _default, _docstring, _attachments)
+  fun val with_default(default': (Expr | None)): FieldVar => create(_name, _field_type, default', _docstring, _attachments)
+  fun val with_docstring(docstring': (LitString | None)): FieldVar => create(_name, _field_type, _default, docstring', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
     | "name" => _name
     | "field_type" => _field_type
     | "default" => _default
+    | "docstring" => _docstring
     else error
     end
   
@@ -2279,13 +2327,16 @@ class val FieldVar is (AST & Field)
     if child' is replace' then return this end
     try
       if child' is _name then
-        return create(replace' as Id, _field_type, _default, _attachments)
+        return create(replace' as Id, _field_type, _default, _docstring, _attachments)
       end
       if child' is _field_type then
-        return create(_name, replace' as Type, _default, _attachments)
+        return create(_name, replace' as Type, _default, _docstring, _attachments)
       end
       if child' is _default then
-        return create(_name, _field_type, replace' as (Expr | None), _attachments)
+        return create(_name, _field_type, replace' as (Expr | None), _docstring, _attachments)
+      end
+      if child' is _docstring then
+        return create(_name, _field_type, _default, replace' as (LitString | None), _attachments)
       end
       error
     else this
@@ -2297,7 +2348,8 @@ class val FieldVar is (AST & Field)
     s.push('(')
     s.>append(_name.string()).>push(',').push(' ')
     s.>append(_field_type.string()).>push(',').push(' ')
-    s.>append(_default.string())
+    s.>append(_default.string()).>push(',').push(' ')
+    s.>append(_docstring.string())
     s.push(')')
     consume s
 
@@ -2307,16 +2359,19 @@ class val FieldEmbed is (AST & Field)
   let _name: Id
   let _field_type: Type
   let _default: (Expr | None)
+  let _docstring: (LitString | None)
   
   new val create(
     name': Id,
     field_type': Type,
     default': (Expr | None) = None,
+    docstring': (LitString | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _name = name'
     _field_type = field_type'
     _default = default'
+    _docstring = docstring'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -2333,6 +2388,7 @@ class val FieldEmbed is (AST & Field)
       else errs.push(("FieldEmbed missing required field: field_type", pos')); error
       end
     let default': (AST | None) = try iter.next()? else None end
+    let docstring': (AST | None) = try iter.next()? else None end
     if
       try
         let extra' = iter.next()?
@@ -2353,37 +2409,45 @@ class val FieldEmbed is (AST & Field)
       try default' as (Expr | None)
       else errs.push(("FieldEmbed got incompatible field: default", try (default' as AST).pos() else SourcePosNone end)); error
       end
+    _docstring =
+      try docstring' as (LitString | None)
+      else errs.push(("FieldEmbed got incompatible field: docstring", try (docstring' as AST).pos() else SourcePosNone end)); error
+      end
   
   fun val apply_specialised[C](c: C, fn: {[A: AST val](C, A)} val) => fn[FieldEmbed](consume c, this)
   fun val pos(): SourcePosAny => try find_attached_val[SourcePosAny]()? else SourcePosNone end
   fun val with_pos(pos': SourcePosAny): FieldEmbed => attach_val[SourcePosAny](pos')
   
-  fun val size(): USize => 1 + 1 + 1
+  fun val size(): USize => 1 + 1 + 1 + 1
   fun val apply(idx: USize): (AST | None)? =>
     var offset: USize = 0
     if idx == (0 + offset) then return _name end
     if idx == (1 + offset) then return _field_type end
     if idx == (2 + offset) then return _default end
+    if idx == (3 + offset) then return _docstring end
     error
-  fun val attach_val[A: Any val](a: A): FieldEmbed => create(_name, _field_type, _default, (try _attachments as Attachments else Attachments end).attach_val[A](a))
+  fun val attach_val[A: Any val](a: A): FieldEmbed => create(_name, _field_type, _default, _docstring, (try _attachments as Attachments else Attachments end).attach_val[A](a))
   
-  fun val attach_tag[A: Any tag](a: A): FieldEmbed => create(_name, _field_type, _default, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
+  fun val attach_tag[A: Any tag](a: A): FieldEmbed => create(_name, _field_type, _default, _docstring, (try _attachments as Attachments else Attachments end).attach_tag[A](a))
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
   fun val name(): Id => _name
   fun val field_type(): Type => _field_type
   fun val default(): (Expr | None) => _default
+  fun val docstring(): (LitString | None) => _docstring
   
-  fun val with_name(name': Id): FieldEmbed => create(name', _field_type, _default, _attachments)
-  fun val with_field_type(field_type': Type): FieldEmbed => create(_name, field_type', _default, _attachments)
-  fun val with_default(default': (Expr | None)): FieldEmbed => create(_name, _field_type, default', _attachments)
+  fun val with_name(name': Id): FieldEmbed => create(name', _field_type, _default, _docstring, _attachments)
+  fun val with_field_type(field_type': Type): FieldEmbed => create(_name, field_type', _default, _docstring, _attachments)
+  fun val with_default(default': (Expr | None)): FieldEmbed => create(_name, _field_type, default', _docstring, _attachments)
+  fun val with_docstring(docstring': (LitString | None)): FieldEmbed => create(_name, _field_type, _default, docstring', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
     | "name" => _name
     | "field_type" => _field_type
     | "default" => _default
+    | "docstring" => _docstring
     else error
     end
   
@@ -2391,13 +2455,16 @@ class val FieldEmbed is (AST & Field)
     if child' is replace' then return this end
     try
       if child' is _name then
-        return create(replace' as Id, _field_type, _default, _attachments)
+        return create(replace' as Id, _field_type, _default, _docstring, _attachments)
       end
       if child' is _field_type then
-        return create(_name, replace' as Type, _default, _attachments)
+        return create(_name, replace' as Type, _default, _docstring, _attachments)
       end
       if child' is _default then
-        return create(_name, _field_type, replace' as (Expr | None), _attachments)
+        return create(_name, _field_type, replace' as (Expr | None), _docstring, _attachments)
+      end
+      if child' is _docstring then
+        return create(_name, _field_type, _default, replace' as (LitString | None), _attachments)
       end
       error
     else this
@@ -2409,7 +2476,8 @@ class val FieldEmbed is (AST & Field)
     s.push('(')
     s.>append(_name.string()).>push(',').push(' ')
     s.>append(_field_type.string()).>push(',').push(' ')
-    s.>append(_default.string())
+    s.>append(_default.string()).>push(',').push(' ')
+    s.>append(_docstring.string())
     s.push(')')
     consume s
 
@@ -3312,18 +3380,18 @@ class val TypeArgs is AST
 class val Params is AST
   let _attachments: (Attachments | None)
   
-  let _list: coll.Vec[Param]
+  let _list: coll.Vec[(Param | DontCare)]
   let _ellipsis: (Ellipsis | None)
   
   new val create(
-    list': (coll.Vec[Param] | Array[Param] val) = coll.Vec[Param],
+    list': (coll.Vec[(Param | DontCare)] | Array[(Param | DontCare)] val) = coll.Vec[(Param | DontCare)],
     ellipsis': (Ellipsis | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _list = 
       match list'
-      | let v: coll.Vec[Param] => v
-      | let s: Array[Param] val => coll.Vec[Param].concat(s.values())
+      | let v: coll.Vec[(Param | DontCare)] => v
+      | let s: Array[(Param | DontCare)] val => coll.Vec[(Param | DontCare)].concat(s.values())
       end
     _ellipsis = ellipsis'
   
@@ -3333,10 +3401,10 @@ class val Params is AST
     errs: Array[(String, SourcePosAny)] = [])?
   =>
     _attachments = Attachments.attach_val[SourcePosAny](pos')
-    var list' = coll.Vec[Param]
+    var list' = coll.Vec[(Param | DontCare)]
     var list_next' = try iter.next()? else None end
     while true do
-      try list' = list'.push(list_next' as Param) else break end
+      try list' = list'.push(list_next' as (Param | DontCare)) else break end
       try list_next' = iter.next()? else list_next' = None; break end
     end
     let ellipsis': (AST | None) = list_next'
@@ -3371,13 +3439,13 @@ class val Params is AST
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val list(): coll.Vec[Param] => _list
+  fun val list(): coll.Vec[(Param | DontCare)] => _list
   fun val ellipsis(): (Ellipsis | None) => _ellipsis
   
-  fun val with_list(list': (coll.Vec[Param] | Array[Param] val)): Params => create(list', _ellipsis, _attachments)
+  fun val with_list(list': (coll.Vec[(Param | DontCare)] | Array[(Param | DontCare)] val)): Params => create(list', _ellipsis, _attachments)
   fun val with_ellipsis(ellipsis': (Ellipsis | None)): Params => create(_list, ellipsis', _attachments)
   
-  fun val with_list_push(x: val->Param): Params => with_list(_list.push(x))
+  fun val with_list_push(x: val->(Param | DontCare)): Params => with_list(_list.push(x))
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
@@ -3390,8 +3458,8 @@ class val Params is AST
     if child' is replace' then return this end
     try
       try
-        let i = _list.find(child' as Param)?
-        return create(_list.update(i, replace' as Param)?, _ellipsis, _attachments)
+        let i = _list.find(child' as (Param | DontCare))?
+        return create(_list.update(i, replace' as (Param | DontCare))?, _ellipsis, _attachments)
       end
       if child' is _ellipsis then
         return create(_list, replace' as (Ellipsis | None), _attachments)
@@ -4403,12 +4471,12 @@ class val IfDefOr is (AST & IfDefBinaryOp & IfDefCond)
 class val IfDef is (AST & Expr)
   let _attachments: (Attachments | None)
   
-  let _condition: IfDefCond
+  let _condition: Expr
   let _then_body: Sequence
   let _else_body: (Sequence | IfDef | None)
   
   new val create(
-    condition': IfDefCond,
+    condition': Expr,
     then_body': Sequence,
     else_body': (Sequence | IfDef | None) = None,
     attachments': (Attachments | None) = None)
@@ -4441,7 +4509,7 @@ class val IfDef is (AST & Expr)
     then error end
     
     _condition =
-      try condition' as IfDefCond
+      try condition' as Expr
       else errs.push(("IfDef got incompatible field: condition", try (condition' as AST).pos() else SourcePosNone end)); error
       end
     _then_body =
@@ -4470,11 +4538,11 @@ class val IfDef is (AST & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val condition(): IfDefCond => _condition
+  fun val condition(): Expr => _condition
   fun val then_body(): Sequence => _then_body
   fun val else_body(): (Sequence | IfDef | None) => _else_body
   
-  fun val with_condition(condition': IfDefCond): IfDef => create(condition', _then_body, _else_body, _attachments)
+  fun val with_condition(condition': Expr): IfDef => create(condition', _then_body, _else_body, _attachments)
   fun val with_then_body(then_body': Sequence): IfDef => create(_condition, then_body', _else_body, _attachments)
   fun val with_else_body(else_body': (Sequence | IfDef | None)): IfDef => create(_condition, _then_body, else_body', _attachments)
   
@@ -4490,7 +4558,7 @@ class val IfDef is (AST & Expr)
     if child' is replace' then return this end
     try
       if child' is _condition then
-        return create(replace' as IfDefCond, _then_body, _else_body, _attachments)
+        return create(replace' as Expr, _then_body, _else_body, _attachments)
       end
       if child' is _then_body then
         return create(_condition, replace' as Sequence, _else_body, _attachments)
@@ -4982,13 +5050,13 @@ class val Repeat is (AST & Expr)
 class val For is (AST & Expr)
   let _attachments: (Attachments | None)
   
-  let _refs: (Id | IdTuple)
+  let _refs: (Id | IdTuple | DontCare)
   let _iterator: Sequence
   let _loop_body: Sequence
   let _else_body: (Sequence | None)
   
   new val create(
-    refs': (Id | IdTuple),
+    refs': (Id | IdTuple | DontCare),
     iterator': Sequence,
     loop_body': Sequence,
     else_body': (Sequence | None) = None,
@@ -5027,7 +5095,7 @@ class val For is (AST & Expr)
     then error end
     
     _refs =
-      try refs' as (Id | IdTuple)
+      try refs' as (Id | IdTuple | DontCare)
       else errs.push(("For got incompatible field: refs", try (refs' as AST).pos() else SourcePosNone end)); error
       end
     _iterator =
@@ -5061,12 +5129,12 @@ class val For is (AST & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val refs(): (Id | IdTuple) => _refs
+  fun val refs(): (Id | IdTuple | DontCare) => _refs
   fun val iterator(): Sequence => _iterator
   fun val loop_body(): Sequence => _loop_body
   fun val else_body(): (Sequence | None) => _else_body
   
-  fun val with_refs(refs': (Id | IdTuple)): For => create(refs', _iterator, _loop_body, _else_body, _attachments)
+  fun val with_refs(refs': (Id | IdTuple | DontCare)): For => create(refs', _iterator, _loop_body, _else_body, _attachments)
   fun val with_iterator(iterator': Sequence): For => create(_refs, iterator', _loop_body, _else_body, _attachments)
   fun val with_loop_body(loop_body': Sequence): For => create(_refs, _iterator, loop_body', _else_body, _attachments)
   fun val with_else_body(else_body': (Sequence | None)): For => create(_refs, _iterator, _loop_body, else_body', _attachments)
@@ -5084,7 +5152,7 @@ class val For is (AST & Expr)
     if child' is replace' then return this end
     try
       if child' is _refs then
-        return create(replace' as (Id | IdTuple), _iterator, _loop_body, _else_body, _attachments)
+        return create(replace' as (Id | IdTuple | DontCare), _iterator, _loop_body, _else_body, _attachments)
       end
       if child' is _iterator then
         return create(_refs, replace' as Sequence, _loop_body, _else_body, _attachments)
@@ -5225,16 +5293,16 @@ class val With is (AST & Expr)
 class val IdTuple is (AST & Expr)
   let _attachments: (Attachments | None)
   
-  let _elements: coll.Vec[(Id | IdTuple)]
+  let _elements: coll.Vec[(Id | IdTuple | DontCare)]
   
   new val create(
-    elements': (coll.Vec[(Id | IdTuple)] | Array[(Id | IdTuple)] val) = coll.Vec[(Id | IdTuple)],
+    elements': (coll.Vec[(Id | IdTuple | DontCare)] | Array[(Id | IdTuple | DontCare)] val) = coll.Vec[(Id | IdTuple | DontCare)],
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _elements = 
       match elements'
-      | let v: coll.Vec[(Id | IdTuple)] => v
-      | let s: Array[(Id | IdTuple)] val => coll.Vec[(Id | IdTuple)].concat(s.values())
+      | let v: coll.Vec[(Id | IdTuple | DontCare)] => v
+      | let s: Array[(Id | IdTuple | DontCare)] val => coll.Vec[(Id | IdTuple | DontCare)].concat(s.values())
       end
   
   new from_iter(
@@ -5243,10 +5311,10 @@ class val IdTuple is (AST & Expr)
     errs: Array[(String, SourcePosAny)] = [])?
   =>
     _attachments = Attachments.attach_val[SourcePosAny](pos')
-    var elements' = coll.Vec[(Id | IdTuple)]
+    var elements' = coll.Vec[(Id | IdTuple | DontCare)]
     var elements_next' = try iter.next()? else None end
     while true do
-      try elements' = elements'.push(elements_next' as (Id | IdTuple)) else break end
+      try elements' = elements'.push(elements_next' as (Id | IdTuple | DontCare)) else break end
       try elements_next' = iter.next()? else elements_next' = None; break end
     end
     if elements_next' isnt None then
@@ -5272,11 +5340,11 @@ class val IdTuple is (AST & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val elements(): coll.Vec[(Id | IdTuple)] => _elements
+  fun val elements(): coll.Vec[(Id | IdTuple | DontCare)] => _elements
   
-  fun val with_elements(elements': (coll.Vec[(Id | IdTuple)] | Array[(Id | IdTuple)] val)): IdTuple => create(elements', _attachments)
+  fun val with_elements(elements': (coll.Vec[(Id | IdTuple | DontCare)] | Array[(Id | IdTuple | DontCare)] val)): IdTuple => create(elements', _attachments)
   
-  fun val with_elements_push(x: val->(Id | IdTuple)): IdTuple => with_elements(_elements.push(x))
+  fun val with_elements_push(x: val->(Id | IdTuple | DontCare)): IdTuple => with_elements(_elements.push(x))
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
@@ -5288,8 +5356,8 @@ class val IdTuple is (AST & Expr)
     if child' is replace' then return this end
     try
       try
-        let i = _elements.find(child' as (Id | IdTuple))?
-        return create(_elements.update(i, replace' as (Id | IdTuple))?, _attachments)
+        let i = _elements.find(child' as (Id | IdTuple | DontCare))?
+        return create(_elements.update(i, replace' as (Id | IdTuple | DontCare))?, _attachments)
       end
       error
     else this
@@ -5592,12 +5660,12 @@ class val Cases is AST
 class val Case is AST
   let _attachments: (Attachments | None)
   
-  let _expr: Expr
+  let _expr: (Expr | None)
   let _guard: (Sequence | None)
   let _body: (Sequence | None)
   
   new val create(
-    expr': Expr,
+    expr': (Expr | None) = None,
     guard': (Sequence | None) = None,
     body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
@@ -5612,10 +5680,7 @@ class val Case is AST
     errs: Array[(String, SourcePosAny)] = [])?
   =>
     _attachments = Attachments.attach_val[SourcePosAny](pos')
-    let expr': (AST | None) =
-      try iter.next()?
-      else errs.push(("Case missing required field: expr", pos')); error
-      end
+    let expr': (AST | None) = try iter.next()? else None end
     let guard': (AST | None) = try iter.next()? else None end
     let body': (AST | None) = try iter.next()? else None end
     if
@@ -5627,7 +5692,7 @@ class val Case is AST
     then error end
     
     _expr =
-      try expr' as Expr
+      try expr' as (Expr | None)
       else errs.push(("Case got incompatible field: expr", try (expr' as AST).pos() else SourcePosNone end)); error
       end
     _guard =
@@ -5656,11 +5721,11 @@ class val Case is AST
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val expr(): Expr => _expr
+  fun val expr(): (Expr | None) => _expr
   fun val guard(): (Sequence | None) => _guard
   fun val body(): (Sequence | None) => _body
   
-  fun val with_expr(expr': Expr): Case => create(expr', _guard, _body, _attachments)
+  fun val with_expr(expr': (Expr | None)): Case => create(expr', _guard, _body, _attachments)
   fun val with_guard(guard': (Sequence | None)): Case => create(_expr, guard', _body, _attachments)
   fun val with_body(body': (Sequence | None)): Case => create(_expr, _guard, body', _attachments)
   
@@ -5676,7 +5741,7 @@ class val Case is AST
     if child' is replace' then return this end
     try
       if child' is _expr then
-        return create(replace' as Expr, _guard, _body, _attachments)
+        return create(replace' as (Expr | None), _guard, _body, _attachments)
       end
       if child' is _guard then
         return create(_expr, replace' as (Sequence | None), _body, _attachments)
@@ -9955,11 +10020,11 @@ class val DigestOf is (AST & UnaryOp & Expr)
 class val LocalLet is (AST & Local & Expr)
   let _attachments: (Attachments | None)
   
-  let _name: Id
+  let _name: (Id | DontCare)
   let _local_type: (Type | None)
   
   new val create(
-    name': Id,
+    name': (Id | DontCare),
     local_type': (Type | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
@@ -9986,7 +10051,7 @@ class val LocalLet is (AST & Local & Expr)
     then error end
     
     _name =
-      try name' as Id
+      try name' as (Id | DontCare)
       else errs.push(("LocalLet got incompatible field: name", try (name' as AST).pos() else SourcePosNone end)); error
       end
     _local_type =
@@ -10010,10 +10075,10 @@ class val LocalLet is (AST & Local & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val name(): Id => _name
+  fun val name(): (Id | DontCare) => _name
   fun val local_type(): (Type | None) => _local_type
   
-  fun val with_name(name': Id): LocalLet => create(name', _local_type, _attachments)
+  fun val with_name(name': (Id | DontCare)): LocalLet => create(name', _local_type, _attachments)
   fun val with_local_type(local_type': (Type | None)): LocalLet => create(_name, local_type', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
@@ -10027,7 +10092,7 @@ class val LocalLet is (AST & Local & Expr)
     if child' is replace' then return this end
     try
       if child' is _name then
-        return create(replace' as Id, _local_type, _attachments)
+        return create(replace' as (Id | DontCare), _local_type, _attachments)
       end
       if child' is _local_type then
         return create(_name, replace' as (Type | None), _attachments)
@@ -10048,11 +10113,11 @@ class val LocalLet is (AST & Local & Expr)
 class val LocalVar is (AST & Local & Expr)
   let _attachments: (Attachments | None)
   
-  let _name: Id
+  let _name: (Id | DontCare)
   let _local_type: (Type | None)
   
   new val create(
-    name': Id,
+    name': (Id | DontCare),
     local_type': (Type | None) = None,
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
@@ -10079,7 +10144,7 @@ class val LocalVar is (AST & Local & Expr)
     then error end
     
     _name =
-      try name' as Id
+      try name' as (Id | DontCare)
       else errs.push(("LocalVar got incompatible field: name", try (name' as AST).pos() else SourcePosNone end)); error
       end
     _local_type =
@@ -10103,10 +10168,10 @@ class val LocalVar is (AST & Local & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val name(): Id => _name
+  fun val name(): (Id | DontCare) => _name
   fun val local_type(): (Type | None) => _local_type
   
-  fun val with_name(name': Id): LocalVar => create(name', _local_type, _attachments)
+  fun val with_name(name': (Id | DontCare)): LocalVar => create(name', _local_type, _attachments)
   fun val with_local_type(local_type': (Type | None)): LocalVar => create(_name, local_type', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
@@ -10120,7 +10185,7 @@ class val LocalVar is (AST & Local & Expr)
     if child' is replace' then return this end
     try
       if child' is _name then
-        return create(replace' as Id, _local_type, _attachments)
+        return create(replace' as (Id | DontCare), _local_type, _attachments)
       end
       if child' is _local_type then
         return create(_name, replace' as (Type | None), _attachments)
@@ -13894,16 +13959,16 @@ class val IsectType is (AST & Type)
 class val TupleType is (AST & Type)
   let _attachments: (Attachments | None)
   
-  let _list: coll.Vec[Type]
+  let _list: coll.Vec[(Type | DontCare)]
   
   new val create(
-    list': (coll.Vec[Type] | Array[Type] val) = coll.Vec[Type],
+    list': (coll.Vec[(Type | DontCare)] | Array[(Type | DontCare)] val) = coll.Vec[(Type | DontCare)],
     attachments': (Attachments | None) = None)
   =>_attachments = attachments'
     _list = 
       match list'
-      | let v: coll.Vec[Type] => v
-      | let s: Array[Type] val => coll.Vec[Type].concat(s.values())
+      | let v: coll.Vec[(Type | DontCare)] => v
+      | let s: Array[(Type | DontCare)] val => coll.Vec[(Type | DontCare)].concat(s.values())
       end
   
   new from_iter(
@@ -13912,10 +13977,10 @@ class val TupleType is (AST & Type)
     errs: Array[(String, SourcePosAny)] = [])?
   =>
     _attachments = Attachments.attach_val[SourcePosAny](pos')
-    var list' = coll.Vec[Type]
+    var list' = coll.Vec[(Type | DontCare)]
     var list_next' = try iter.next()? else None end
     while true do
-      try list' = list'.push(list_next' as Type) else break end
+      try list' = list'.push(list_next' as (Type | DontCare)) else break end
       try list_next' = iter.next()? else list_next' = None; break end
     end
     if list_next' isnt None then
@@ -13941,11 +14006,11 @@ class val TupleType is (AST & Type)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val list(): coll.Vec[Type] => _list
+  fun val list(): coll.Vec[(Type | DontCare)] => _list
   
-  fun val with_list(list': (coll.Vec[Type] | Array[Type] val)): TupleType => create(list', _attachments)
+  fun val with_list(list': (coll.Vec[(Type | DontCare)] | Array[(Type | DontCare)] val)): TupleType => create(list', _attachments)
   
-  fun val with_list_push(x: val->Type): TupleType => with_list(_list.push(x))
+  fun val with_list_push(x: val->(Type | DontCare)): TupleType => with_list(_list.push(x))
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
@@ -13957,8 +14022,8 @@ class val TupleType is (AST & Type)
     if child' is replace' then return this end
     try
       try
-        let i = _list.find(child' as Type)?
-        return create(_list.update(i, replace' as Type)?, _attachments)
+        let i = _list.find(child' as (Type | DontCare))?
+        return create(_list.update(i, replace' as (Type | DontCare))?, _attachments)
       end
       error
     else this

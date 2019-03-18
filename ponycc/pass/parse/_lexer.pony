@@ -7,7 +7,7 @@ type _R is peg.R
 class _Lexer
   let parser: peg.Parser val = recover
     let digit = _R('0', '9')
-    let digits = digit * digit.many()
+    let digits = digit * (_L("_").opt() * digit).many()
     let bin = _R('0', '1')
     let hex = digit / _R('a', 'f') / _R('A', 'F')
     let alpha = _R('a', 'z') / _R('A', 'Z')
@@ -22,40 +22,42 @@ class _Lexer
       * _L("*/")
     
     let string1_char =
-        _L("\\\"") / _L("\\\\") / _L("\\f") / _L("\\n") / _L("\\r") / _L("\\t")
-      / _L("\\b") / (_L("\\x") * hex * hex) / (_L("\\u") * hex * hex * hex * hex)
+        _L("\\\"") / _L("\\\\") / _L("\\f") / _L("\\n") / _L("\\r") / _L("\\t") / _L("\\v") / _L("\\a") / _L("\\0")
+      / _L("\\b") / _L("\\e") / (_L("\\x") * hex * hex) / ((_L("\\u") / _L("\\U")) * hex * hex * hex * hex)
       / (not _L("\"") * not _L("\\") * peg.Unicode)
     let string1_literal =
       (_L("\"") * string1_char.many() * _L("\""))
     
     let string3_literal =
-        _L("\"\"\"") * (not _L("\"\"\"") * peg.Unicode).many() * _L("\"\"\"")
+        _L("\"\"\"") * (not _L("\"\"\"") * peg.Unicode).many() * _L("\"\"\"") * (_L("\"").many())
     
     let string_literal = (string3_literal / string1_literal).term(Tk[LitString])
     
     let char_char =
-        _L("\\'") / _L("\\\\") / _L("\\f") / _L("\\n") /  _L("\\r") / _L("\\t")
-      / _L("\\b") / (_L("\\x") * hex * hex) / (_L("\\u") * hex * hex * hex * hex)
+        _L("\\'") / _L("\\\\") / _L("\\f") / _L("\\n") /  _L("\\r") / _L("\\t") / _L("\\v") / _L("\\a") / _L("\\0")
+      / _L("\\b") / _L("\\e") / (_L("\\x") * hex * hex) / ((_L("\\u") / _L("\\U")) * hex * hex * hex * hex)
       / (not _L("'") * not _L("\\") * peg.Unicode)
     let char_literal =
       (_L("'") * char_char * _L("'")).term(Tk[LitCharacter])
     
     let float_literal =
       (digits * (
-        (_L(".") * digits * (_L("e") / _L("E")) * digits)
-      / ((_L(".") / _L("e") / _L("E")) * digits)
+        (_L(".") * digits * ((_L("e") / _L("E")) * _L("-").opt()) * digits)
+      / ((_L(".") / ((_L("e") / _L("E")) * _L("-").opt())) * digits)
       )).term(Tk[LitFloat])
     
     let int_literal =
       (
-        ((_L("0x") / _L("0X")) * hex * hex.many())
-      / ((_L("0b") / _L("0B")) * bin * bin.many())
+        ((_L("0x") / _L("0X")) * hex * (_L("_").opt() * hex).many())
+      / ((_L("0b") / _L("0B")) * bin * (_L("_").opt() * bin).many())
       / digits
       ).term(Tk[LitInteger])
     
     let ident_start = alpha / _L("_")
     let ident_char = ident_start / digit / _L("'")
     let ident = (ident_start * ident_char.many()).term(Tk[Id])
+
+    let zero_ident = (ident_start.opt() * ident_char.many()).term(Tk[Id])
     
     let lexicon = _Lexicon
     let keyword = lexicon.keywords * (not ident_char)

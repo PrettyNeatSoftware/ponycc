@@ -23,6 +23,7 @@ primitive ASTDefs
       .> in_union("UseDecl")
       .> has("prefix",  "(Id | None)", "None")
       .> has("package", "LitString")
+      .> has("guard",       "(Expr | None)", "None")
     
     g.def("UseFFIDecl")
       .> in_union("UseDecl")
@@ -30,7 +31,7 @@ primitive ASTDefs
       .> has("return_type", "TypeArgs")
       .> has("params",      "Params")
       .> has("partial",     "(Question | None)")
-      .> has("guard",       "(IfDefCond | None)", "None")
+      .> has("guard",       "(Expr | None)", "None")
     
     for name in [
       "TypeAlias"; "Interface"; "Trait"; "Primitive"; "Struct"; "Class"; "Actor"
@@ -57,6 +58,7 @@ primitive ASTDefs
         .> has("name",       "Id")
         .> has("field_type", "Type")
         .> has("default",    "(Expr | None)", "None")
+        .> has("docstring",  "(LitString | None)", "None")
     end
     
     for name in ["MethodFun"; "MethodNew"; "MethodBe"].values() do
@@ -86,7 +88,7 @@ primitive ASTDefs
       .> has("list", "coll.Vec[Type]", "coll.Vec[Type]")
     
     g.def("Params")
-      .> has("list",     "coll.Vec[Param]",   "coll.Vec[Param]") // TODO: account for case where parser emits ellipsis in multiple argument positions
+      .> has("list",     "coll.Vec[(Param | DontCare)]",   "coll.Vec[(Param | DontCare)]") // TODO: account for case where parser emits ellipsis in multiple argument positions
       .> has("ellipsis", "(Ellipsis | None)", "None")
     
     g.def("Param")
@@ -127,7 +129,7 @@ primitive ASTDefs
       .> in_union("Expr")
       .> with_scope()
       .> with_type()
-      .> has("condition", "IfDefCond")
+      .> has("condition", "Expr")
       .> has("then_body", "Sequence")
       .> has("else_body", "(Sequence | IfDef | None)", "None")
     
@@ -168,7 +170,7 @@ primitive ASTDefs
       .> in_union("Expr")
       .> with_scope()
       .> with_type()
-      .> has("refs",      "(Id | IdTuple)")
+      .> has("refs",      "(Id | IdTuple | DontCare)")
       .> has("iterator",  "Sequence")
       .> has("loop_body", "Sequence")
       .> has("else_body", "(Sequence | None)", "None")
@@ -184,7 +186,7 @@ primitive ASTDefs
     g.def("IdTuple") // TODO: implement as Tuple[(Id | IdTuple)]
       .> in_union("Expr") // TODO: remove?
       .> with_type()
-      .> has("elements", "coll.Vec[(Id | IdTuple)]", "coll.Vec[(Id | IdTuple)]")
+      .> has("elements", "coll.Vec[(Id | IdTuple | DontCare)]", "coll.Vec[(Id | IdTuple | DontCare)]")
     
     g.def("AssignTuple") // TODO: implement as Tuple[Assign]
       .> with_type()
@@ -205,7 +207,7 @@ primitive ASTDefs
     
     g.def("Case")
       .> with_scope()
-      .> has("expr",  "Expr")
+      .> has("expr",  "(Expr | None)", "None")
       .> has("guard", "(Sequence | None)", "None")
       .> has("body",  "(Sequence | None)", "None")
     
@@ -264,7 +266,7 @@ primitive ASTDefs
       g.def(name)
         .> in_union("Local", "Expr")
         .> with_type()
-        .> has("name",       "Id")
+        .> has("name",       "(Id | DontCare)")
         .> has("local_type", "(Type | None)", "None")
     end
     
@@ -462,7 +464,7 @@ primitive ASTDefs
     
     g.def("TupleType")
       .> in_union("Type")
-      .> has("list", "coll.Vec[Type]", "coll.Vec[Type]") // TODO: confirm parser compat with this
+      .> has("list", "coll.Vec[(Type | DontCare)]", "coll.Vec[(Type | DontCare)]") // TODO: confirm parser compat with this
     
     g.def("NominalType")
       .> in_union("Type")
