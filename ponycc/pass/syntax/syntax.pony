@@ -23,8 +23,10 @@ primitive Syntax is (Pass[Program, Program] & FrameVisitor[Syntax])
     runner.view_each_ffi_decl({(ffi_decl) =>
       for param in ffi_decl.params().list().values() do
         try
-          runner.err(param.default() as Expr,
-            "An FFI declaration parameter may not have a default value.")
+          match param | let param': Param =>
+            runner.err(param'.default() as Expr,
+              "An FFI declaration parameter may not have a default value.")
+          end
         end
       end
     })
@@ -236,6 +238,10 @@ primitive Syntax is (Pass[Program, Program] & FrameVisitor[Syntax])
         if (idx >= (ast.list().size() - 1)) and (case.body() is None) then
           frame.err(case, "The final case in a match block must have a body.")
         end
+
+        match (case.expr(), case.guard()) | (None, None) =>
+          frame.err(case, "A case in a match block must have at least a pattern or guard.")
+        end
       end
 
     elseif A <: Return then
@@ -276,10 +282,25 @@ primitive Syntax is (Pass[Program, Program] & FrameVisitor[Syntax])
 
     elseif A <: CompileError then
       try
-        let body = (frame.parent(2) as IfDef).then_body()
-        if not ((body.list().size() == 1) and (body.list()(0)? is ast)) then
-          frame.err(ast,
-            "A compile error must be the entire ifdef clause body.")
+        let ifdef_node = (frame.parent(2) as IfDef)
+        let then_body = ifdef_node.then_body()
+
+
+        if not ((then_body.list().size() == 1) and (then_body.list()(0)? is ast)) then
+          var is_valid = false
+
+          try
+            let else_body = ifdef_node.else_body() as Sequence
+            if ((else_body.list().size() == 1) and (else_body.list()(0)? is ast)) then
+              is_valid = true
+            end
+          end
+
+          if not is_valid then
+            frame.err(ast, frame.parent(2).string())
+            frame.err(ast,
+              "A compile error must be the entire ifdef clause body.")
+          end
         end
       else
         frame.err(ast, "A compile error must be in an ifdef clause.")

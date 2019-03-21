@@ -14,11 +14,22 @@ primitive _BuildInfix
 
 primitive _BuildCustomNominalType
   fun apply(state: _RuleState, tree: TkTree) =>
-    _BuildDefault(state, TkTree((tree.tk, tree.pos)))
-
-    for (i, child) in tree.children.pairs() do
-      if (tree.children.size() == 3) and (i == 0)
-      then _BuildDefault(state, TkTree((Tk[None], child.pos)))
+    var i: USize = 0
+    try
+      // if we have a package id, it needs to come after the id
+      if tree.children.size() == 4 then
+        // swap 0 and 1 (package and id)
+        _BuildDefault(state, tree.children(0)?)
+        _BuildDefault(state, TkTree((tree.tk, tree.pos)))
+          i = 1
+      else
+        _BuildDefault(state, TkTree((tree.tk, tree.pos)))
+        _BuildDefault(state, TkTree((Tk[None], tree.children(0)?.pos)))
       end
-      _BuildDefault(state, child)
+
+      while i < tree.children.size() do
+        let child = tree.children(i)?
+        _BuildDefault(state, child)
+        i = i + 1
+      end
     end

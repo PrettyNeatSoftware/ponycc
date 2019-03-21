@@ -31,7 +31,7 @@ primitive ParserDefs
     // {use} {class}
     g.def("module")
       .> tree("Tk[Module]")
-      .> opt_no_dflt_token("package docstring", ["Tk[LitString]"])
+      .> opt_token("package docstring", ["Tk[LitString]"])
       .> seq("use command", ["use"])
       .> seq("type, interface, trait, primitive, class or actor definition", ["type_decl"])
       .> skip("type, interface, trait, primitive, class, actor, member or method", ["Tk[EOF]"])
@@ -42,7 +42,8 @@ primitive ParserDefs
       .> restart(["Tk[Use]"; "Tk[TypeAlias]"; "Tk[Interface]"; "Tk[Trait]"; "Tk[Primitive]"; "Tk[Struct]"; "Tk[Class]"; "Tk[Actor]"])
       .> skip("None", ["Tk[Use]"])
       .> rule("package or ffi declaration", ["use_package"; "use_ffi_decl"])
-
+      .> if_token_then_rule_else_none("Tk[If]", "use condition", ["infix"])
+    
     // [ID ASSIGN] STRING
     g.def("use_package")
       .> tree("Tk[UsePackage]")
@@ -63,8 +64,7 @@ primitive ParserDefs
       .> rule("return type", ["typeargs"])
       .> rule("ffi parameters", ["params"])
       .> opt_token("None", ["Tk[Question]"])
-      .> if_token_then_rule_else_none("Tk[If]", "use condition", ["ifdefinfix"])
-
+    
     // (TYPE | INTERFACE | TRAIT | PRIMITIVE | STRUCT | CLASS | ACTOR) [annotations]
     // [AT] ID [typeparams] [CAP] [IS type] [STRING] members
     g.def("type_decl")
@@ -100,7 +100,8 @@ primitive ParserDefs
       .> skip("mandatory type declaration on field", ["Tk[Colon]"])
       .> rule("field type", ["type"])
       .> if_token_then_rule_else_none("Tk[Assign]", "field value", ["infix"])
-
+      .> opt_token("docstring", ["Tk[LitString]"])
+    
     // (FUN | BE | NEW) [annotations] [CAP | AT] ID [typeparams]
     // (LPAREN | LPAREN_NEW) [params] RPAREN [COLON type] [QUESTION] [ARROW seq]
     g.def("method")
@@ -161,8 +162,8 @@ primitive ParserDefs
     // param {COMMA (param | ellipsis)}
     g.def("params")
       .> token("None", ["Tk[LParen]"; "Tk[LParenNew]"])
-      .> opt_rule("parameter", ["param"; "ellipsis"])
-      .> while_token_do_rule("Tk[Comma]", "parameter", ["param"; "ellipsis"])
+      .> opt_rule("parameter", ["param"; "ellipsis"; "dontcare"])
+      .> while_token_do_rule("Tk[Comma]", "parameter", ["param"; "ellipsis"; "dontcare"])
       .> skip("None", ["Tk[RParen]"])
       .> map_tk([
         ("Tk[LParen]",     "Tk[Params]")
@@ -258,13 +259,13 @@ primitive ParserDefs
 
     // ifdefterm {ifdefbinop}
     g.def("ifdefinfix")
-      .> rule("ifdef condition", ["ifdefterm"])
+      .> rule("ifdef condition", ["infix"])
       .> seq("ifdef binary operator", ["ifdefbinop"])
 
     // ifdefflag | ifdefnot
     g.def("ifdefterm")
-      .> rule("ifdef condition", ["ifdefflag"; "ifdefnot"])
-
+      .> rule("ifdef condition", ["infix"])
+    
     // ID | STRING
     g.def("ifdefflag")
       .> tree("Tk[IfDefFlag]")
@@ -275,8 +276,8 @@ primitive ParserDefs
       .> print_inline()
       .> tree("Tk[IfDefNot]")
       .> skip("None", ["Tk[Not]"])
-      .> rule("ifdef condition", ["ifdefterm"])
-
+      .> rule("ifdef condition", ["infix"])
+    
     // (AND | OR) ifdefterm
     g.def("ifdefbinop")
       .> builder("_BuildInfix")
@@ -285,14 +286,14 @@ primitive ParserDefs
         ("Tk[And]", "Tk[IfDefAnd]")
         ("Tk[Or]",  "Tk[IfDefOr]")
       ])
-      .> rule("ifdef condition", ["ifdefterm"])
-
+      .> rule("ifdef condition", ["infix"])
+    
     // IFDEF [annotations] ifdefinfix THEN seq [elseifdef | elseclause] END
     g.def("ifdef")
       .> print_inline()
       .> token("None", ["Tk[IfDef]"])
       .> annotate()
-      .> rule("condition expression", ["ifdefinfix"])
+      .> rule("condition expression", ["infix"])
       .> skip("None", ["Tk[Then]"])
       .> rule("then value", ["seq"])
       .> opt_rule("else clause", ["elseifdef"; "elseclause"])
@@ -303,7 +304,7 @@ primitive ParserDefs
       .> tree("Tk[IfDef]")
       .> skip("None", ["Tk[ElseIf]"])
       .> annotate()
-      .> rule("condition expression", ["ifdefinfix"])
+      .> rule("condition expression", ["infix"])
       .> skip("None", ["Tk[Then]"])
       .> rule("then value", ["seq"])
       .> opt_rule("else clause", ["elseifdef"; "elseclause"])
@@ -413,8 +414,8 @@ primitive ParserDefs
     // ID
     g.def("idseqsingle")
       .> print_inline()
-      .> token("variable name", ["Tk[Id]"])
-
+      .> token("variable name", ["Tk[Id]" ; "Tk[DontCare]"])
+    
     // (LPAREN | LPAREN_NEW) idseq {COMMA idseq} RPAREN
     g.def("idseqmulti")
       .> print_inline()
@@ -572,7 +573,7 @@ primitive ParserDefs
         ("Tk[Var]", "Tk[LocalVar]")
         ("Tk[Let]", "Tk[LocalLet]")
       ])
-      .> token("variable name", ["Tk[Id]"])
+      .> token("variable name", ["Tk[Id]" ; "Tk[DontCare]"])
       .> if_token_then_rule_else_none("Tk[Colon]", "variable type", ["type"])
 
     // ASSIGNOP assignment
@@ -833,8 +834,8 @@ primitive ParserDefs
     g.def("tupletype")
       .> print_inline()
       .> token("None", ["Tk[LParen]"; "Tk[LParenNew]"])
-      .> rule("type", ["infixtype"])
-      .> while_token_do_rule("Tk[Comma]", "type", ["type"])
+      .> rule("type", ["infixtype" ; "dontcare"])
+      .> while_token_do_rule("Tk[Comma]", "type", ["type" ; "dontcare"])
       .> skip("None", ["Tk[RParen]"])
       .> map_tk([
         ("Tk[LParen]",    "Tk[TupleType]")

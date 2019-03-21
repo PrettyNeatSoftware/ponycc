@@ -28,7 +28,8 @@ interface val SourcePosAny is Comparable[SourcePosAny box]
   fun source(): SourceAny
   fun offset(): USize
   fun length(): USize
-
+  fun cursor(): (USize, USize)
+  
   fun eq(that: SourcePosAny box): Bool =>
     (source() == that.source()) and
     (offset() == that.offset()) and
@@ -71,6 +72,7 @@ primitive SourcePosNone is SourcePosAny
   fun source(): SourceAny => SourceNone
   fun offset(): USize => 0
   fun length(): USize => 0
+  fun cursor(): (USize, USize) => (0, 0)
 
 class val SourcePos is SourcePosAny
   let _source: SourceAny
@@ -83,3 +85,19 @@ class val SourcePos is SourcePosAny
   fun source(): SourceAny => _source
   fun offset(): USize => _offset
   fun length(): USize => _length
+
+  fun cursor(): (USize, USize) =>
+    var off = USize(0)
+    var line = USize(0)
+    var col = USize(0)
+    for c in _source.content().values() do
+      if off == offset() then break end
+      if c == '\n' then
+        line = line + 1
+        col = 0
+      else
+        col = col + 1
+      end
+      off = off + 1
+    end
+    (line, col)
