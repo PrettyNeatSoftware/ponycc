@@ -91,13 +91,13 @@ class val SourcePos is SourcePosAny
     var line = USize(0)
     var col = USize(0)
     for c in _source.content().values() do
+      if off == offset() then break end
       if c == '\n' then
         line = line + 1
         col = 0
       else
         col = col + 1
       end
-      if off == offset() then break end
       off = off + 1
     end
     (line, col)

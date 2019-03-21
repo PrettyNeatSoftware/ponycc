@@ -1,6 +1,8 @@
 
 use "files"
 use "ast"
+use "collections"
+use pc = "collections/persistent"
 
 class val ResolveSourceFiles
   """
@@ -8,15 +10,20 @@ class val ResolveSourceFiles
   """
   let _auth: AmbientAuth
   let _search_paths: Array[String] val
+  let _content_overrides: pc.Map[String, String] val
   
-  new val create(auth': AmbientAuth, search_paths': Array[String] val = []) =>
+  new val create(
+    auth': AmbientAuth,
+    search_paths': Array[String] val = [],
+    content_overrides': pc.Map[String, String] val)
+  =>
     """
     Ambient authority is required so that the entire filesystem is available.
     
     The optional search_paths parameter will specify the global search paths
     to fall back to if a directory couldn't be found relative to the start path.
     """
-    (_auth, _search_paths) = (auth', search_paths')
+    (_auth, _search_paths, _content_overrides) = (auth', search_paths', content_overrides')
   
   fun apply(start_path: String, path: String): (String, Sources)? =>
     """
@@ -33,6 +40,14 @@ class val ResolveSourceFiles
     let sources: Array[Source] trn = []
     for file_name in dir.entries()?.values() do
       if Path.ext(file_name) != "pony" then continue end
+
+      let file_path = Path.join(dir_path.path, file_name)
+      if _content_overrides.contains(file_path) then
+        try
+          sources.push(Source(_content_overrides(file_path)?, file_path))
+          continue
+        end
+      end
 
       let file = dir.open_file(file_name)?
 
