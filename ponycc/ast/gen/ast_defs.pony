@@ -37,6 +37,7 @@ primitive ASTDefs
       "TypeAlias"; "Interface"; "Trait"; "Primitive"; "Struct"; "Class"; "Actor"
     ].values() do
       g.def(name)
+        .> with_scope() // TODO: should this really be a scope?
         .> in_union("TypeDecl")
         .> has("name",        "Id")
         .> has("cap",         "(Cap | None)",        "None")
@@ -129,7 +130,7 @@ primitive ASTDefs
       .> in_union("Expr")
       .> with_scope()
       .> with_type()
-      .> has("condition", "Expr")
+      .> has("condition", "(Expr | IfDefCond)")
       .> has("then_body", "Sequence")
       .> has("else_body", "(Sequence | IfDef | None)", "None")
 
@@ -280,7 +281,7 @@ primitive ASTDefs
       .> in_union("Expr")
       .> with_type()
       .> has("left",  "Expr")
-      .> has("right", "Id")
+      .> has("right", "(Id | None)")
 
     g.def("Chain")
       .> in_union("Expr")
@@ -425,7 +426,7 @@ primitive ASTDefs
     g.def("TypeRef")
       .> in_union("Expr")
       .> with_type()
-      .> has("package", "Expr")
+      .> has("package", "(PackageRef | None)")
       .> has("name",    "(Id | TypeArgs)") // TODO: don't use this weird scheme
 
     for name in ["FieldLetRef"; "FieldVarRef"; "FieldEmbedRef"].values() do

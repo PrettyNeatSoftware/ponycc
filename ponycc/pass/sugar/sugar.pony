@@ -1,6 +1,7 @@
 
 use ".."
 use "../../ast"
+use "../../pkg"
 use "../../frame"
 use "../../unreachable"
 
@@ -282,28 +283,111 @@ primitive Sugar is (Pass[Program, Program] & FrameVisitor[Sugar])
       end
 
     elseif A <: UnaryOp then
+			match ast'
+			| let _: Not =>
+				let preserve = IsAstContext[Sugar, IfDef](frame, {(id) => id.condition()})
+				if preserve then
+					return
+				end
+			end
+
       match _unary_op_method_id[A]() | let method_id: Id =>
         frame.replace(Call(Dot(ast'.expr(), method_id)))
       end
 
     elseif A <: BinaryOp then
-      match _binary_op_method_id[A]() | let method_id: Id =>
-        let args =
-          match ast'.right()
-          | let tuple: Tuple => Args(tuple.elements())
-          | let expr: Expr => Args([Sequence([expr])])
-          end
+			match ast'
+			| let _: (And | Or) =>
+				let preserve = IsAstContext[Sugar, IfDef](frame, {(id) => id.condition()})
+				if preserve then
+					return
+				end
+			end
 
-        frame.replace(
-          Call(Dot(ast'.left(), method_id), args, NamedArgs, ast'.partial())
-        )
-      end
+			match _binary_op_method_id[A]() | let method_id: Id =>
+				let args =
+					match ast'.right()
+					| let tuple: Tuple => Args(tuple.elements())
+					| let expr: Expr => Args([Sequence([expr])])
+					end
+
+				frame.replace(
+					Call(Dot(ast'.left(), method_id), args, NamedArgs, ast'.partial())
+				)
+			end
+
+    // TODO: from sugar.c - sugar_ifdef
+		elseif A <: IfDef then
+			try
+				frame.replace(ast'.with_condition(IfdefCondNormalise(ast'.condition())?))
+			else Unreachable("IfDef couldn't be normalized: " + ast'.string())
+			end
+
+    // TODO: from sugar.c - sugar_location
+		elseif A <: LitLocation then
+			let pos = ast'.pos()
+			// TODO: defer this to callsite when ast' is the default param value
+			frame.replace(
+				Object(None, None, Members(
+					where methods' = [
+						MethodFun(
+							Id("file"),
+							Tag where
+							return_type' = NominalType(Id("String")),
+							body' = Sequence([LitString(pos.source().path())])
+						)
+						MethodFun(
+							Id("type_name"),
+							Tag where
+							return_type' = NominalType(Id("String")),
+							body' = Sequence([LitString(frame.type_decl().name().value())])
+						)
+						MethodFun(
+							Id("method_name"),
+							Tag where
+							return_type' = NominalType(Id("String")),
+							body' = Sequence([LitString(try (frame.method() as Method).name().value() else "" end)])
+						)
+						MethodFun(
+							Id("line"),
+							Tag where
+							return_type' = NominalType(Id("USize")),
+							body' = Sequence([LitInteger(pos.cursor()._1.u128() + 1)])
+						)
+						MethodFun(
+							Id("pos"),
+							Tag where
+							return_type' = NominalType(Id("USize")),
+							body' = Sequence([LitInteger(pos.cursor()._2.u128() + 1)])
+						)
+					]
+				))
+			)
 
     // TODO: from sugar.c - sugar_ffi
     // TODO: from sugar.c - sugar_ifdef
     // TODO: from sugar.c - sugar_use
     // TODO: from sugar.c - sugar_lambdatype
     // TODO: from sugar.c - sugar_barelambda
-    // TODO: from sugar.c - sugar_location
 
     end
+
+primitive IsAstContext[V: FrameVisitor[V], A: AST val]
+	"""
+	Returns true if frame is contained inside the direct child of
+	an ancestral AST of type A, selected by fn
+	"""
+	fun apply(frame: Frame[V] box, fn: {(A): AST} = {(a)=>a}, parent: USize = 1): Bool =>
+		let current = frame.parent(parent - 1)
+		let upper = frame.parent(parent)
+		if current is upper then
+			return false
+		end
+
+		match upper
+		| let ast: A =>
+			if current is fn(ast) then
+				return true
+			end
+		end
+		IsAstContext[V, A](frame, fn, parent + 1)

@@ -81,6 +81,17 @@ class val SourcePos is SourcePosAny
 
   new val create(source': SourceAny, offset': USize = 0, length': USize = 0) =>
     (_source, _offset, _length) = (source', offset', length')
+	
+	new val from_cursor(source': SourceAny, line: USize = 0, pos: USize = 0, length': USize = 1) ? =>
+		(_source, _length) = (source', length')
+
+		let off: USize =
+			if line > 0 then
+				pos + _source.content().find("\n", 0, line - 1)?.usize()
+			else pos
+			end
+		
+		_offset = off
 
   fun source(): SourceAny => _source
   fun offset(): USize => _offset

@@ -597,7 +597,7 @@ primitive ParserDefs
     g.def("dot")
       .> builder("_BuildInfix")
       .> token("None", ["Tk[Dot]"])
-      .> token("member name", ["Tk[Id]"])
+      .> opt_token("member name", ["Tk[Id]"])
 
     // CHAIN ID
     g.def("chain")

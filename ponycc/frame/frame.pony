@@ -57,6 +57,8 @@ class _FrameTop[V: FrameVisitor[V]]
 
   fun _r(): _FrameReactor[V] => _reactor
 
+	fun ast(): AST => _ast
+
   fun err(a: AST, s: String) => _reactor.err(a, s)
 
   fun parent(n: USize): AST => _ast // ignore n - we can't go any higher
@@ -173,6 +175,8 @@ class Frame[V: FrameVisitor[V]]
     _maybe_continuation
 
   fun _r(): _FrameReactor[V] => _upper._r()
+
+	fun ast(): AST => _ast
 
   fun err(a: AST, s: String) =>
     """

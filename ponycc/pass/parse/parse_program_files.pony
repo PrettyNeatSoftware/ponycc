@@ -22,7 +22,7 @@ class val ParseProgramFiles is Pass[Sources, Program]
     if _load_builtin then
       try
         (let builtin_dir, let builtin_sources) = _resolve_sources(".", "builtin")?
-        engine.start(builtin_sources)
+        engine.start_builtin(builtin_sources)
       end
     end
     engine.start(sources)
@@ -43,6 +43,7 @@ actor _ParseProgramFilesEngine
   var _errs: Array[PassError] trn = []
   let _complete_fn: {(Program, Array[PassError] val)} val
   let _resolve_sources: {(String, String): (String, Sources)?} val
+  var _builtin_use: (UsePackage | None) = None
 
   new create(
     resolve_sources': {(String, String): (String, Sources)?} val,
@@ -53,7 +54,10 @@ actor _ParseProgramFilesEngine
   be start(sources: Sources, package: Package = Package) =>
     _start(sources, package)
   
-  fun ref _start(sources: Sources, package: Package) =>
+  be start_builtin(sources: Sources, package: Package = Package) =>
+    _start(sources, package where is_builtin = true)
+  
+  fun ref _start(sources: Sources, package: Package, is_builtin: Bool = false) =>
     try
       let package_path = AbsPath(Path.dir(sources(0)?.path()))
       if _packages.contains(package_path) then return end
@@ -63,13 +67,13 @@ actor _ParseProgramFilesEngine
       for source in sources.values() do
         _pending.set(source)
         let this_tag: _ParseProgramFilesEngine = this
-        Parse(source, this_tag~after_parse(source, package)) // TODO: fix ponyc to let plain `this` work here
+        Parse(source, this_tag~after_parse(source, package where is_builtin = is_builtin)) // TODO: fix ponyc to let plain `this` work here
       end
     end
 
   be after_parse(
     source: Source, package: Package,
-    module': Module, errs: Array[PassError] val)
+    module': Module, errs: Array[PassError] val, is_builtin: Bool = false)
   =>
     var module = consume module'
 
@@ -79,7 +83,15 @@ actor _ParseProgramFilesEngine
     // Take note of any errors.
     for err in errs.values() do _errs.push(err) end
 
+    if is_builtin then
+      _builtin_use = UsePackage(None, LitString("builtin")).attach_tag[Package](package)
+    end
+
     let use_packages = Array[UsePackage]
+
+    if not is_builtin then
+      match _builtin_use | let u: UsePackage => use_packages.push(u) end
+    end
 
     // Call start for the source files of any referenced packages.
     for u' in module.use_decls().values() do
@@ -109,7 +121,6 @@ actor _ParseProgramFilesEngine
             else
               let new_package = Package
               use_packages.push(u.attach_tag[Package](new_package))
-              @printf[I32]("Use Package %s\n".cstring(), u.package().value().cstring())
               _start(sources, new_package)
             end
           

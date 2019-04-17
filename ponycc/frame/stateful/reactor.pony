@@ -1,6 +1,7 @@
 use "collections"
 use "../../ast"
 use "../../pass"
+use "ponycc/unreachable"
 use poly = "../../polyfill"
 
 actor _FrameReactor[V: FrameVisitor[V, S], S: Any iso]
@@ -37,10 +38,8 @@ actor _FrameReactor[V: FrameVisitor[V, S], S: Any iso]
         _errs.push(PassError(a.pos(), s))
     
     be _push_expectation(loc: SourceLoc = __loc) =>
-        //@printf[I32]("Push (%s, %u:%u)\n".cstring(), loc.file().cstring(), loc.line(), loc.pos())
         _expectations = _expectations + 1
     be _pop_expectation(loc: SourceLoc = __loc) => 
-        //@printf[I32]("Pop (%s, %u:%u)\n".cstring(), loc.file().cstring(), loc.line(), loc.pos())
         _expectations = _expectations - 1
         if _expectations == 0 then _complete(loc) end
     
@@ -62,13 +61,11 @@ actor _FrameReactor[V: FrameVisitor[V, S], S: Any iso]
         end end
 
         if not found then 
-            @printf[I32]("didn't find await continuation\n".cstring())
             _ready_to_continue(c) = value
         end
     
     fun ref _complete(loc: SourceLoc) =>
         if (_continuations.size() > 0) and (_errs.size() == 0) then
-            @printf[I32]("Compiler Deadlock\n".cstring())
             _errs.push(PassError(SourcePosNone, "compiler deadlock"))
         end
 
@@ -77,7 +74,7 @@ actor _FrameReactor[V: FrameVisitor[V, S], S: Any iso]
         for e in _errs.values() do copy.push(e) end
         match _state = _Placeholder
         | let s: S => (_complete_fn = {(_, _, _) => _})(_program, consume s, consume copy)
-        | let p: _Placeholder => consume p ; @printf[I32]("_state == _Placeholder, this shouldn't happen ever!".cstring())
+        | let p: _Placeholder => Unreachable ; consume p
         end
     
     be _track_result(
@@ -153,14 +150,18 @@ actor _FrameReactor[V: FrameVisitor[V, S], S: Any iso]
         _track_result(program, package, type_decl,
             recover
                 let top = _FrameTop[V, S](this, program, package, type_decl, ast)
-                let frame = Frame[V, S]._create_under(top, ast)
+                let frame = Frame[V, S].create_under(top, ast)
                 let continuation = frame._visit(consume continue_from')
-                ast = top.type_decl()
+                (_, ast) = top.type_decl()
                 match continuation | let c: _FrameContinuation[V, S] =>
                     _push_expectation()
                 end
                 continuation
             end
         )
-        _pop_expectation()
+
+        type_decl.access_type_decl({(_)(reactor: _FrameReactor[V, S] tag = this) =>
+            reactor._pop_expectation()
+            ast
+        })
     

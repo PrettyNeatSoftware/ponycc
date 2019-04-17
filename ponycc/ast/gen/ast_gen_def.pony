@@ -73,7 +73,15 @@ class ASTGenDefFixed is ASTGenDef
     g.pop_indent()
     g.line("=>")
     g.push_indent()
-    g.add("_attachments = attachments'")
+    //g.add("_attachments = attachments'")
+
+    g.line("_attachments = " +
+      if _with_scope then
+        "try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end"
+      else "attachments'"
+      end
+    )
+
     for (field_name, field_type, _) in fields.values() do
       g.line("_" + field_name + " = ")
       if field_type.at("coll.Vec[") then
@@ -101,7 +109,13 @@ class ASTGenDefFixed is ASTGenDef
         errs: Array[(String, SourcePosAny)] = [])?
       =>""")
     g.push_indent()
-    g.line("_attachments = Attachments.attach_val[SourcePosAny](pos')")
+
+    g.line("_attachments = Attachments.attach_val[SourcePosAny](pos')" +
+      if _with_scope then
+        ".attach_val[Scope](Scope)"
+      else ""
+      end
+    )
 
     var iter_next = "iter.next()?"
     for (field_name, field_type, field_default) in fields.values() do

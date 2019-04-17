@@ -383,7 +383,8 @@ class val Module is AST
     type_decls': (coll.Vec[TypeDecl] | Array[TypeDecl] val) = coll.Vec[TypeDecl],
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _use_decls = 
       match use_decls'
       | let v: coll.Vec[UseDecl] => v
@@ -401,7 +402,7 @@ class val Module is AST
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     var use_decls' = coll.Vec[UseDecl]
     var use_decls_next' = try iter.next()? else None end
     while true do
@@ -521,7 +522,8 @@ class val UsePackage is (AST & UseDecl)
     package': LitString,
     guard': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _prefix = prefix'
     _package = package'
     _guard = guard'
@@ -634,7 +636,8 @@ class val UseFFIDecl is (AST & UseDecl)
     partial': (Question | None),
     guard': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _return_type = return_type'
     _params = params'
@@ -788,7 +791,8 @@ class val TypeAlias is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -802,7 +806,7 @@ class val TypeAlias is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("TypeAlias missing required field: name", pos')); error
@@ -961,7 +965,8 @@ class val Interface is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -975,7 +980,7 @@ class val Interface is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("Interface missing required field: name", pos')); error
@@ -1134,7 +1139,8 @@ class val Trait is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -1148,7 +1154,7 @@ class val Trait is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("Trait missing required field: name", pos')); error
@@ -1307,7 +1313,8 @@ class val Primitive is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -1321,7 +1328,7 @@ class val Primitive is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("Primitive missing required field: name", pos')); error
@@ -1480,7 +1487,8 @@ class val Struct is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -1494,7 +1502,7 @@ class val Struct is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("Struct missing required field: name", pos')); error
@@ -1653,7 +1661,8 @@ class val Class is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -1667,7 +1676,7 @@ class val Class is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("Class missing required field: name", pos')); error
@@ -1826,7 +1835,8 @@ class val Actor is (AST & TypeDecl)
     at': (At | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -1840,7 +1850,7 @@ class val Actor is (AST & TypeDecl)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("Actor missing required field: name", pos')); error
@@ -1989,7 +1999,8 @@ class val Members is AST
     fields': (coll.Vec[Field] | Array[Field] val) = coll.Vec[Field],
     methods': (coll.Vec[Method] | Array[Method] val) = coll.Vec[Method],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _fields = 
       match fields'
       | let v: coll.Vec[Field] => v
@@ -2111,7 +2122,8 @@ class val FieldLet is (AST & Field)
     default': (Expr | None) = None,
     docstring': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _field_type = field_type'
     _default = default'
@@ -2239,7 +2251,8 @@ class val FieldVar is (AST & Field)
     default': (Expr | None) = None,
     docstring': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _field_type = field_type'
     _default = default'
@@ -2367,7 +2380,8 @@ class val FieldEmbed is (AST & Field)
     default': (Expr | None) = None,
     docstring': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _field_type = field_type'
     _default = default'
@@ -2505,7 +2519,8 @@ class val MethodFun is (AST & Method)
     body': (Sequence | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -2521,7 +2536,7 @@ class val MethodFun is (AST & Method)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("MethodFun missing required field: name", pos')); error
@@ -2710,7 +2725,8 @@ class val MethodNew is (AST & Method)
     body': (Sequence | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -2726,7 +2742,7 @@ class val MethodNew is (AST & Method)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("MethodNew missing required field: name", pos')); error
@@ -2915,7 +2931,8 @@ class val MethodBe is (AST & Method)
     body': (Sequence | None) = None,
     docs': (LitString | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _name = name'
     _cap = cap'
     _type_params = type_params'
@@ -2931,7 +2948,7 @@ class val MethodBe is (AST & Method)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let name': (AST | None) =
       try iter.next()?
       else errs.push(("MethodBe missing required field: name", pos')); error
@@ -3104,7 +3121,8 @@ class val TypeParams is AST
   new val create(
     list': (coll.Vec[TypeParam] | Array[TypeParam] val) = coll.Vec[TypeParam],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[TypeParam] => v
@@ -3194,7 +3212,8 @@ class val TypeParam is AST
     constraint': (Type | None) = None,
     default': (Type | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _constraint = constraint'
     _default = default'
@@ -3299,7 +3318,8 @@ class val TypeArgs is AST
   new val create(
     list': (coll.Vec[Type] | Array[Type] val) = coll.Vec[Type],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[Type] => v
@@ -3387,7 +3407,8 @@ class val Params is AST
     list': (coll.Vec[(Param | DontCare)] | Array[(Param | DontCare)] val) = coll.Vec[(Param | DontCare)],
     ellipsis': (Ellipsis | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[(Param | DontCare)] => v
@@ -3495,7 +3516,8 @@ class val Param is AST
     param_type': (Type | None) = None,
     default': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _param_type = param_type'
     _default = default'
@@ -3600,7 +3622,8 @@ class val Sequence is (AST & Expr)
   new val create(
     list': (coll.Vec[Expr] | Array[Expr] val) = coll.Vec[Expr],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _list = 
       match list'
       | let v: coll.Vec[Expr] => v
@@ -3612,7 +3635,7 @@ class val Sequence is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     var list' = coll.Vec[Expr]
     var list_next' = try iter.next()? else None end
     while true do
@@ -3686,7 +3709,8 @@ class val Return is (AST & Jump & Expr)
   new val create(
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _value = value'
   
   new from_iter(
@@ -3760,7 +3784,8 @@ class val Break is (AST & Jump & Expr)
   new val create(
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _value = value'
   
   new from_iter(
@@ -3834,7 +3859,8 @@ class val Continue is (AST & Jump & Expr)
   new val create(
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _value = value'
   
   new from_iter(
@@ -3908,7 +3934,8 @@ class val Error is (AST & Jump & Expr)
   new val create(
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _value = value'
   
   new from_iter(
@@ -3982,7 +4009,8 @@ class val CompileIntrinsic is (AST & Jump & Expr)
   new val create(
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _value = value'
   
   new from_iter(
@@ -4056,7 +4084,8 @@ class val CompileError is (AST & Jump & Expr)
   new val create(
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _value = value'
   
   new from_iter(
@@ -4130,7 +4159,8 @@ class val IfDefFlag is (AST & IfDefCond)
   new val create(
     name': (Id | LitString),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
   
   new from_iter(
@@ -4207,7 +4237,8 @@ class val IfDefNot is (AST & IfDefCond)
   new val create(
     expr': IfDefCond,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
   
   new from_iter(
@@ -4286,7 +4317,8 @@ class val IfDefAnd is (AST & IfDefBinaryOp & IfDefCond)
     left': IfDefCond,
     right': IfDefCond,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -4382,7 +4414,8 @@ class val IfDefOr is (AST & IfDefBinaryOp & IfDefCond)
     left': IfDefCond,
     right': IfDefCond,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -4471,16 +4504,17 @@ class val IfDefOr is (AST & IfDefBinaryOp & IfDefCond)
 class val IfDef is (AST & Expr)
   let _attachments: (Attachments | None)
   
-  let _condition: Expr
+  let _condition: (Expr | IfDefCond)
   let _then_body: Sequence
   let _else_body: (Sequence | IfDef | None)
   
   new val create(
-    condition': Expr,
+    condition': (Expr | IfDefCond),
     then_body': Sequence,
     else_body': (Sequence | IfDef | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _condition = condition'
     _then_body = then_body'
     _else_body = else_body'
@@ -4490,7 +4524,7 @@ class val IfDef is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let condition': (AST | None) =
       try iter.next()?
       else errs.push(("IfDef missing required field: condition", pos')); error
@@ -4509,7 +4543,7 @@ class val IfDef is (AST & Expr)
     then error end
     
     _condition =
-      try condition' as Expr
+      try condition' as (Expr | IfDefCond)
       else errs.push(("IfDef got incompatible field: condition", try (condition' as AST).pos() else SourcePosNone end)); error
       end
     _then_body =
@@ -4538,11 +4572,11 @@ class val IfDef is (AST & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val condition(): Expr => _condition
+  fun val condition(): (Expr | IfDefCond) => _condition
   fun val then_body(): Sequence => _then_body
   fun val else_body(): (Sequence | IfDef | None) => _else_body
   
-  fun val with_condition(condition': Expr): IfDef => create(condition', _then_body, _else_body, _attachments)
+  fun val with_condition(condition': (Expr | IfDefCond)): IfDef => create(condition', _then_body, _else_body, _attachments)
   fun val with_then_body(then_body': Sequence): IfDef => create(_condition, then_body', _else_body, _attachments)
   fun val with_else_body(else_body': (Sequence | IfDef | None)): IfDef => create(_condition, _then_body, else_body', _attachments)
   
@@ -4558,7 +4592,7 @@ class val IfDef is (AST & Expr)
     if child' is replace' then return this end
     try
       if child' is _condition then
-        return create(replace' as Expr, _then_body, _else_body, _attachments)
+        return create(replace' as (Expr | IfDefCond), _then_body, _else_body, _attachments)
       end
       if child' is _then_body then
         return create(_condition, replace' as Sequence, _else_body, _attachments)
@@ -4594,7 +4628,8 @@ class val IfType is (AST & Expr)
     then_body': Sequence,
     else_body': (Sequence | IfType | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _sub = sub'
     _super = super'
     _then_body = then_body'
@@ -4605,7 +4640,7 @@ class val IfType is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let sub': (AST | None) =
       try iter.next()?
       else errs.push(("IfType missing required field: sub", pos')); error
@@ -4723,7 +4758,8 @@ class val If is (AST & Expr)
     then_body': Sequence,
     else_body': (Sequence | If | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _condition = condition'
     _then_body = then_body'
     _else_body = else_body'
@@ -4733,7 +4769,7 @@ class val If is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let condition': (AST | None) =
       try iter.next()?
       else errs.push(("If missing required field: condition", pos')); error
@@ -4835,7 +4871,8 @@ class val While is (AST & Expr)
     loop_body': Sequence,
     else_body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _condition = condition'
     _loop_body = loop_body'
     _else_body = else_body'
@@ -4845,7 +4882,7 @@ class val While is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let condition': (AST | None) =
       try iter.next()?
       else errs.push(("While missing required field: condition", pos')); error
@@ -4947,7 +4984,8 @@ class val Repeat is (AST & Expr)
     condition': Sequence,
     else_body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _loop_body = loop_body'
     _condition = condition'
     _else_body = else_body'
@@ -4957,7 +4995,7 @@ class val Repeat is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let loop_body': (AST | None) =
       try iter.next()?
       else errs.push(("Repeat missing required field: loop_body", pos')); error
@@ -5061,7 +5099,8 @@ class val For is (AST & Expr)
     loop_body': Sequence,
     else_body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _refs = refs'
     _iterator = iterator'
     _loop_body = loop_body'
@@ -5072,7 +5111,7 @@ class val For is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let refs': (AST | None) =
       try iter.next()?
       else errs.push(("For missing required field: refs", pos')); error
@@ -5190,7 +5229,8 @@ class val With is (AST & Expr)
     body': Sequence,
     else_body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _assigns = assigns'
     _body = body'
     _else_body = else_body'
@@ -5200,7 +5240,7 @@ class val With is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let assigns': (AST | None) =
       try iter.next()?
       else errs.push(("With missing required field: assigns", pos')); error
@@ -5298,7 +5338,8 @@ class val IdTuple is (AST & Expr)
   new val create(
     elements': (coll.Vec[(Id | IdTuple | DontCare)] | Array[(Id | IdTuple | DontCare)] val) = coll.Vec[(Id | IdTuple | DontCare)],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _elements = 
       match elements'
       | let v: coll.Vec[(Id | IdTuple | DontCare)] => v
@@ -5384,7 +5425,8 @@ class val AssignTuple is AST
   new val create(
     elements': (coll.Vec[Assign] | Array[Assign] val) = coll.Vec[Assign],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _elements = 
       match elements'
       | let v: coll.Vec[Assign] => v
@@ -5474,7 +5516,8 @@ class val Match is (AST & Expr)
     cases': Cases = Cases,
     else_body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _expr = expr'
     _cases = cases'
     _else_body = else_body'
@@ -5484,7 +5527,7 @@ class val Match is (AST & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let expr': (AST | None) =
       try iter.next()?
       else errs.push(("Match missing required field: expr", pos')); error
@@ -5579,7 +5622,8 @@ class val Cases is AST
   new val create(
     list': (coll.Vec[Case] | Array[Case] val) = coll.Vec[Case],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _list = 
       match list'
       | let v: coll.Vec[Case] => v
@@ -5591,7 +5635,7 @@ class val Cases is AST
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     var list' = coll.Vec[Case]
     var list_next' = try iter.next()? else None end
     while true do
@@ -5669,7 +5713,8 @@ class val Case is AST
     guard': (Sequence | None) = None,
     body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _expr = expr'
     _guard = guard'
     _body = body'
@@ -5679,7 +5724,7 @@ class val Case is AST
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let expr': (AST | None) = try iter.next()? else None end
     let guard': (AST | None) = try iter.next()? else None end
     let body': (AST | None) = try iter.next()? else None end
@@ -5775,7 +5820,8 @@ class val Try is (AST & Expr)
     else_body': (Sequence | None) = None,
     then_body': (Sequence | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _body = body'
     _else_body = else_body'
     _then_body = then_body'
@@ -5882,7 +5928,8 @@ class val Consume is (AST & Expr)
     cap': (Cap | None),
     expr': (Reference | This),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _cap = cap'
     _expr = expr'
   
@@ -5978,7 +6025,8 @@ class val Recover is (AST & Expr)
     cap': (Cap | None),
     expr': Sequence,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _cap = cap'
     _expr = expr'
   
@@ -6074,7 +6122,8 @@ class val As is (AST & Expr)
     expr': Expr,
     as_type': Type,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
     _as_type = as_type'
   
@@ -6172,7 +6221,8 @@ class val Add is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6284,7 +6334,8 @@ class val AddUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6396,7 +6447,8 @@ class val Sub is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6508,7 +6560,8 @@ class val SubUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6620,7 +6673,8 @@ class val Mul is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6732,7 +6786,8 @@ class val MulUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6844,7 +6899,8 @@ class val Div is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -6956,7 +7012,8 @@ class val DivUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7068,7 +7125,8 @@ class val Mod is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7180,7 +7238,8 @@ class val ModUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7292,7 +7351,8 @@ class val LShift is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7404,7 +7464,8 @@ class val LShiftUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7516,7 +7577,8 @@ class val RShift is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7628,7 +7690,8 @@ class val RShiftUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7740,7 +7803,8 @@ class val Eq is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7852,7 +7916,8 @@ class val EqUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -7964,7 +8029,8 @@ class val NE is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8076,7 +8142,8 @@ class val NEUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8188,7 +8255,8 @@ class val LT is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8300,7 +8368,8 @@ class val LTUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8412,7 +8481,8 @@ class val LE is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8524,7 +8594,8 @@ class val LEUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8636,7 +8707,8 @@ class val GE is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8748,7 +8820,8 @@ class val GEUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8860,7 +8933,8 @@ class val GT is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -8972,7 +9046,8 @@ class val GTUnsafe is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -9084,7 +9159,8 @@ class val Is is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -9196,7 +9272,8 @@ class val Isnt is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -9308,7 +9385,8 @@ class val And is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -9420,7 +9498,8 @@ class val Or is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -9532,7 +9611,8 @@ class val XOr is (AST & BinaryOp & Expr)
     right': Expr,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
     _partial = partial'
@@ -9640,7 +9720,8 @@ class val Not is (AST & UnaryOp & Expr)
   new val create(
     expr': Expr,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
   
   new from_iter(
@@ -9717,7 +9798,8 @@ class val Neg is (AST & UnaryOp & Expr)
   new val create(
     expr': Expr,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
   
   new from_iter(
@@ -9794,7 +9876,8 @@ class val NegUnsafe is (AST & UnaryOp & Expr)
   new val create(
     expr': Expr,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
   
   new from_iter(
@@ -9871,7 +9954,8 @@ class val AddressOf is (AST & UnaryOp & Expr)
   new val create(
     expr': Expr,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
   
   new from_iter(
@@ -9948,7 +10032,8 @@ class val DigestOf is (AST & UnaryOp & Expr)
   new val create(
     expr': Expr,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _expr = expr'
   
   new from_iter(
@@ -10027,7 +10112,8 @@ class val LocalLet is (AST & Local & Expr)
     name': (Id | DontCare),
     local_type': (Type | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _local_type = local_type'
   
@@ -10120,7 +10206,8 @@ class val LocalVar is (AST & Local & Expr)
     name': (Id | DontCare),
     local_type': (Type | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _local_type = local_type'
   
@@ -10213,7 +10300,8 @@ class val Assign is (AST & Expr)
     left': Expr,
     right': Expr,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -10303,13 +10391,14 @@ class val Dot is (AST & Expr)
   let _attachments: (Attachments | None)
   
   let _left: Expr
-  let _right: Id
+  let _right: (Id | None)
   
   new val create(
     left': Expr,
-    right': Id,
+    right': (Id | None),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -10340,7 +10429,7 @@ class val Dot is (AST & Expr)
       else errs.push(("Dot got incompatible field: left", try (left' as AST).pos() else SourcePosNone end)); error
       end
     _right =
-      try right' as Id
+      try right' as (Id | None)
       else errs.push(("Dot got incompatible field: right", try (right' as AST).pos() else SourcePosNone end)); error
       end
   
@@ -10361,10 +10450,10 @@ class val Dot is (AST & Expr)
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
   fun val left(): Expr => _left
-  fun val right(): Id => _right
+  fun val right(): (Id | None) => _right
   
   fun val with_left(left': Expr): Dot => create(left', _right, _attachments)
-  fun val with_right(right': Id): Dot => create(_left, right', _attachments)
+  fun val with_right(right': (Id | None)): Dot => create(_left, right', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
     match child'
@@ -10380,7 +10469,7 @@ class val Dot is (AST & Expr)
         return create(replace' as Expr, _right, _attachments)
       end
       if child' is _right then
-        return create(_left, replace' as Id, _attachments)
+        return create(_left, replace' as (Id | None), _attachments)
       end
       error
     else this
@@ -10405,7 +10494,8 @@ class val Chain is (AST & Expr)
     left': Expr,
     right': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -10501,7 +10591,8 @@ class val Tilde is (AST & Expr)
     left': Expr,
     right': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -10597,7 +10688,8 @@ class val Qualify is (AST & Expr)
     left': Expr,
     right': TypeArgs,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -10697,7 +10789,8 @@ class val Call is (AST & Expr)
     named_args': NamedArgs = NamedArgs,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _callable = callable'
     _args = args'
     _named_args = named_args'
@@ -10824,7 +10917,8 @@ class val CallFFI is (AST & Expr)
     named_args': NamedArgs = NamedArgs,
     partial': (Question | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _type_args = type_args'
     _args = args'
@@ -10957,7 +11051,8 @@ class val Args is AST
   new val create(
     list': (coll.Vec[Sequence] | Array[Sequence] val) = coll.Vec[Sequence],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[Sequence] => v
@@ -11043,7 +11138,8 @@ class val NamedArgs is AST
   new val create(
     list': (coll.Vec[NamedArg] | Array[NamedArg] val) = coll.Vec[NamedArg],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[NamedArg] => v
@@ -11131,7 +11227,8 @@ class val NamedArg is AST
     name': Id,
     value': Sequence,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _value = value'
   
@@ -11241,7 +11338,8 @@ class val Lambda is (AST & Expr)
     body': Sequence = Sequence,
     object_cap': (Cap | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _method_cap = method_cap'
     _name = name'
     _type_params = type_params'
@@ -11443,7 +11541,8 @@ class val BareLambda is (AST & Expr)
     body': Sequence = Sequence,
     object_cap': (Cap | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _method_cap = method_cap'
     _name = name'
     _type_params = type_params'
@@ -11629,7 +11728,8 @@ class val LambdaCaptures is AST
   new val create(
     list': (coll.Vec[LambdaCapture] | Array[LambdaCapture] val) = coll.Vec[LambdaCapture],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[LambdaCapture] => v
@@ -11719,7 +11819,8 @@ class val LambdaCapture is AST
     local_type': (Type | None) = None,
     value': (Expr | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _local_type = local_type'
     _value = value'
@@ -11828,7 +11929,8 @@ class val Object is (AST & Expr)
     provides': (Type | None) = None,
     members': (Members | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _cap = cap'
     _provides = provides'
     _members = members'
@@ -11932,7 +12034,8 @@ class val LitArray is (AST & Expr)
     elem_type': (Type | None) = None,
     sequence': Sequence = Sequence,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _elem_type = elem_type'
     _sequence = sequence'
   
@@ -12020,7 +12123,8 @@ class val Tuple is (AST & Expr)
   new val create(
     elements': (coll.Vec[Sequence] | Array[Sequence] val) = coll.Vec[Sequence],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _elements = 
       match elements'
       | let v: coll.Vec[Sequence] => v
@@ -12103,7 +12207,8 @@ class val This is (AST & Expr)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -12152,7 +12257,8 @@ class val LitTrue is (AST & LitBool & Expr)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -12201,7 +12307,8 @@ class val LitFalse is (AST & LitBool & Expr)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -12442,7 +12549,8 @@ class val LitLocation is (AST & Expr)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -12494,7 +12602,8 @@ class val Reference is (AST & Expr)
   new val create(
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
   
   new from_iter(
@@ -12568,7 +12677,8 @@ class val DontCare is (AST & Expr)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -12620,7 +12730,8 @@ class val PackageRef is (AST & Expr)
   new val create(
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
   
   new from_iter(
@@ -12699,7 +12810,8 @@ class val MethodFunRef is (AST & MethodRef & Expr)
     receiver': Expr,
     name': (Id | TypeArgs),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _receiver = receiver'
     _name = name'
   
@@ -12708,7 +12820,7 @@ class val MethodFunRef is (AST & MethodRef & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let receiver': (AST | None) =
       try iter.next()?
       else errs.push(("MethodFunRef missing required field: receiver", pos')); error
@@ -12795,7 +12907,8 @@ class val MethodNewRef is (AST & MethodRef & Expr)
     receiver': Expr,
     name': (Id | TypeArgs),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _receiver = receiver'
     _name = name'
   
@@ -12804,7 +12917,7 @@ class val MethodNewRef is (AST & MethodRef & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let receiver': (AST | None) =
       try iter.next()?
       else errs.push(("MethodNewRef missing required field: receiver", pos')); error
@@ -12891,7 +13004,8 @@ class val MethodBeRef is (AST & MethodRef & Expr)
     receiver': Expr,
     name': (Id | TypeArgs),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = try attachments' as Attachments else Attachments.attach_val[Scope](Scope) end
     _receiver = receiver'
     _name = name'
   
@@ -12900,7 +13014,7 @@ class val MethodBeRef is (AST & MethodRef & Expr)
     pos': SourcePosAny = SourcePosNone,
     errs: Array[(String, SourcePosAny)] = [])?
   =>
-    _attachments = Attachments.attach_val[SourcePosAny](pos')
+    _attachments = Attachments.attach_val[SourcePosAny](pos').attach_val[Scope](Scope)
     let receiver': (AST | None) =
       try iter.next()?
       else errs.push(("MethodBeRef missing required field: receiver", pos')); error
@@ -12980,14 +13094,15 @@ class val MethodBeRef is (AST & MethodRef & Expr)
 class val TypeRef is (AST & Expr)
   let _attachments: (Attachments | None)
   
-  let _package: Expr
+  let _package: (PackageRef | None)
   let _name: (Id | TypeArgs)
   
   new val create(
-    package': Expr,
+    package': (PackageRef | None),
     name': (Id | TypeArgs),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _package = package'
     _name = name'
   
@@ -13014,7 +13129,7 @@ class val TypeRef is (AST & Expr)
     then error end
     
     _package =
-      try package' as Expr
+      try package' as (PackageRef | None)
       else errs.push(("TypeRef got incompatible field: package", try (package' as AST).pos() else SourcePosNone end)); error
       end
     _name =
@@ -13038,10 +13153,10 @@ class val TypeRef is (AST & Expr)
   
   fun val find_attached_val[A: Any val](): A? => (_attachments as Attachments).find_val[A]()?
   fun val find_attached_tag[A: Any tag](): A? => (_attachments as Attachments).find_tag[A]()?
-  fun val package(): Expr => _package
+  fun val package(): (PackageRef | None) => _package
   fun val name(): (Id | TypeArgs) => _name
   
-  fun val with_package(package': Expr): TypeRef => create(package', _name, _attachments)
+  fun val with_package(package': (PackageRef | None)): TypeRef => create(package', _name, _attachments)
   fun val with_name(name': (Id | TypeArgs)): TypeRef => create(_package, name', _attachments)
   
   fun val get_child_dynamic(child': String, index': USize = 0): (AST | None)? =>
@@ -13055,7 +13170,7 @@ class val TypeRef is (AST & Expr)
     if child' is replace' then return this end
     try
       if child' is _package then
-        return create(replace' as Expr, _name, _attachments)
+        return create(replace' as (PackageRef | None), _name, _attachments)
       end
       if child' is _name then
         return create(_package, replace' as (Id | TypeArgs), _attachments)
@@ -13083,7 +13198,8 @@ class val FieldLetRef is (AST & FieldRef & Expr)
     receiver': Expr,
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _receiver = receiver'
     _name = name'
   
@@ -13179,7 +13295,8 @@ class val FieldVarRef is (AST & FieldRef & Expr)
     receiver': Expr,
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _receiver = receiver'
     _name = name'
   
@@ -13275,7 +13392,8 @@ class val FieldEmbedRef is (AST & FieldRef & Expr)
     receiver': Expr,
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _receiver = receiver'
     _name = name'
   
@@ -13371,7 +13489,8 @@ class val TupleElementRef is (AST & Expr)
     receiver': Expr,
     name': LitInteger,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _receiver = receiver'
     _name = name'
   
@@ -13465,7 +13584,8 @@ class val LocalLetRef is (AST & LocalRef & Expr)
   new val create(
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
   
   new from_iter(
@@ -13542,7 +13662,8 @@ class val LocalVarRef is (AST & LocalRef & Expr)
   new val create(
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
   
   new from_iter(
@@ -13619,7 +13740,8 @@ class val ParamRef is (AST & LocalRef & Expr)
   new val create(
     name': Id,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
   
   new from_iter(
@@ -13698,7 +13820,8 @@ class val ViewpointType is (AST & Type)
     left': Type,
     right': Type,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _left = left'
     _right = right'
   
@@ -13792,7 +13915,8 @@ class val UnionType is (AST & Type)
   new val create(
     list': (coll.Vec[Type] | Array[Type] val) = coll.Vec[Type],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[Type] => v
@@ -13878,7 +14002,8 @@ class val IsectType is (AST & Type)
   new val create(
     list': (coll.Vec[Type] | Array[Type] val) = coll.Vec[Type],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[Type] => v
@@ -13964,7 +14089,8 @@ class val TupleType is (AST & Type)
   new val create(
     list': (coll.Vec[(Type | DontCare)] | Array[(Type | DontCare)] val) = coll.Vec[(Type | DontCare)],
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[(Type | DontCare)] => v
@@ -14058,7 +14184,8 @@ class val NominalType is (AST & Type)
     cap': (Cap | GenCap | None) = None,
     cap_mod': (CapMod | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _package = package'
     _type_args = type_args'
@@ -14197,7 +14324,8 @@ class val FunType is (AST & Type)
     params': Params = Params,
     return_type': (Type | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _cap = cap'
     _type_params = type_params'
     _params = params'
@@ -14330,7 +14458,8 @@ class val LambdaType is (AST & Type)
     object_cap': (Cap | GenCap | None) = None,
     cap_mod': (CapMod | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _method_cap = method_cap'
     _name = name'
     _type_params = type_params'
@@ -14516,7 +14645,8 @@ class val BareLambdaType is (AST & Type)
     object_cap': (Cap | GenCap | None) = None,
     cap_mod': (CapMod | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _method_cap = method_cap'
     _name = name'
     _type_params = type_params'
@@ -14692,7 +14822,8 @@ class val TypeParamRef is (AST & Type)
     cap': (Cap | GenCap | None) = None,
     cap_mod': (CapMod | None) = None,
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _name = name'
     _cap = cap'
     _cap_mod = cap_mod'
@@ -14794,7 +14925,8 @@ class val ThisType is (AST & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -14843,7 +14975,8 @@ class val DontCareType is (AST & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -14892,7 +15025,8 @@ class val ErrorType is (AST & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -14941,7 +15075,8 @@ class val LiteralType is (AST & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -14990,7 +15125,8 @@ class val LiteralTypeBranch is (AST & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15039,7 +15175,8 @@ class val OpLiteralType is (AST & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15088,7 +15225,8 @@ class val Iso is (AST & Cap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15137,7 +15275,8 @@ class val Trn is (AST & Cap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15186,7 +15325,8 @@ class val Ref is (AST & Cap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15235,7 +15375,8 @@ class val Val is (AST & Cap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15284,7 +15425,8 @@ class val Box is (AST & Cap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15333,7 +15475,8 @@ class val Tag is (AST & Cap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15382,7 +15525,8 @@ class val CapRead is (AST & GenCap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15431,7 +15575,8 @@ class val CapSend is (AST & GenCap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15480,7 +15625,8 @@ class val CapShare is (AST & GenCap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15529,7 +15675,8 @@ class val CapAlias is (AST & GenCap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15578,7 +15725,8 @@ class val CapAny is (AST & GenCap & Type)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15627,7 +15775,8 @@ class val Aliased is (AST & CapMod)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15676,7 +15825,8 @@ class val Ephemeral is (AST & CapMod)
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15725,7 +15875,8 @@ class val At is AST
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15774,7 +15925,8 @@ class val Question is AST
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15823,7 +15975,8 @@ class val Ellipsis is AST
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15872,7 +16025,8 @@ class val Annotation is AST
   
   new val create(
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
   
   new from_iter(
     iter: Iterator[(AST | None)],
@@ -15924,7 +16078,8 @@ class val Semicolon is (AST & Expr)
   new val create(
     list': (coll.Vec[Expr] | Array[Expr] val),
     attachments': (Attachments | None) = None)
-  =>_attachments = attachments'
+  =>
+    _attachments = attachments'
     _list = 
       match list'
       | let v: coll.Vec[Expr] => v
