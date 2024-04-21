@@ -1,0 +1,22 @@
+{
+  "packages": [
+    "ponycc"
+  ],
+  "deps": [
+    {
+        "locator": "github.com/ponylang/peg.git",
+        "version": "main"
+    },
+    {
+        "locator": "github.com/jemc/pony-inspect.git",
+        "version": "master"
+    }
+  ],
+  "info": {
+    "description": "",
+    "homepage": "",
+    "license": "",
+    "documentation_url": "",
+    "version": "",
+    "name": ""  }
+}

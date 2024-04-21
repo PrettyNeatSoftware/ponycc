@@ -1,0 +1,12 @@
+{
+  "locks": [
+    {
+      "locator": "github.com/ponylang/peg.git",
+      "revision": "main"
+    },
+    {
+      "locator": "github.com/jemc/pony-inspect.git",
+      "revision": "master"
+    }
+  ]
+}
